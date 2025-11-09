@@ -1,0 +1,12 @@
+name: NerysiaPlugin
+version: 1.0.0
+main: com.nerysia.plugin.Nerysia
+api-version: 1.8
+author: Nerysia
+description: Plugin avec compas et panneau
+
+commands:
+  grade:
+    description: Gérer les grades des joueurs
+    usage: /grade <joueur> <grade>
+    permission: nerysia.grade
