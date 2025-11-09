@@ -99,7 +99,7 @@ public class ScoreboardTask implements Runnable {
             if (team == null) {
                 team = scoreboard.registerNewTeam(teamName);
                 // Utiliser le nom court pour le nametag
-                team.setPrefix(grade.getPrefix() + "[" + grade.getShortName() + "] ");
+                team.setPrefix(grade.getPrefix() + "[" + grade.getShortName() + "] §r");
                 team.setSuffix("");
             }
             

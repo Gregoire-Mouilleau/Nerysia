@@ -1,15 +1,8 @@
 com\nerysia\plugin\lobby\listeners\LobbyInventoryListener.class
-com\nerysia\plugin\Nerysia.class
-plugin.yml
 com\nerysia\plugin\grades\Grade.class
-com\nerysia\plugin\lobby\handlers\LobbyJoinHandler.class
 com\nerysia\plugin\grades\commands\GradeTabCompleter.class
-com\nerysia\plugin\lobby\handlers\LobbyJoinHandler$1.class
 com\nerysia\plugin\lobby\listeners\LobbyBlockListener.class
-com\nerysia\plugin\core\scoreboard\ScoreboardTask.class
-com\nerysia\plugin\grades\listeners\GradeDisplayListener.class
 com\nerysia\plugin\grades\GradeManager.class
 com\nerysia\plugin\lobby\listeners\LobbyProtectionListener.class
-com\nerysia\plugin\grades\commands\GradeCommand.class
 com\nerysia\plugin\lobby\handlers\LobbyItemInteractHandler.class
 com\nerysia\plugin\lobby\listeners\LobbyWeatherListener.class

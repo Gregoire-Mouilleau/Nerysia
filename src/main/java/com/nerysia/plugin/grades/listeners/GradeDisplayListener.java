@@ -63,7 +63,7 @@ public class GradeDisplayListener implements Listener {
         }
         
         // Calculer la longueur du préfixe (en retirant les codes couleur)
-        String prefixText = grade.getPrefix() + "[" + grade.getShortName() + "] ";
+        String prefixText = grade.getPrefix() + "[" + grade.getShortName() + "] §r";
         
         // Compter les caractères visibles (sans les codes couleur §X)
         String prefixWithoutColor = prefixText.replaceAll("§.", "");
