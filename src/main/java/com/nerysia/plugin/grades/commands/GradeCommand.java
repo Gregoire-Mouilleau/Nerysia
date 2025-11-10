@@ -3,7 +3,6 @@ package com.nerysia.plugin.grades.commands;
 import com.nerysia.plugin.Nerysia;
 import com.nerysia.plugin.grades.Grade;
 import com.nerysia.plugin.grades.GradeManager;
-import com.nerysia.plugin.grades.listeners.GradeDisplayListener;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -52,9 +51,14 @@ public class GradeCommand implements CommandExecutor {
         sender.sendMessage("§aVous avez défini le grade de §e" + target.getName() + " §aà " + grade.getDisplayName());
         target.sendMessage("§aVotre grade a été défini à " + grade.getDisplayName());
 
-        // Mettre à jour l'affichage du joueur
-        GradeDisplayListener displayListener = new GradeDisplayListener(plugin);
-        displayListener.updatePlayerDisplay(target);
+        // Mettre à jour le display name du joueur
+        String displayName = grade.getPrefix() + "[" + grade.getTabName() + "] §f" + target.getName() + "§r";
+        target.setDisplayName(displayName);
+        
+        // Forcer la mise à jour du scoreboard pour tous les joueurs
+        if (target.getWorld().getName().equals("Lobby")) {
+            plugin.getScoreboardTask().createScoreboardForPlayer(target);
+        }
 
         return true;
     }

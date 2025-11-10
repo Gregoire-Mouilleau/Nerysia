@@ -76,6 +76,9 @@ public class LobbyJoinHandler implements Listener {
                 // Créer le scoreboard pour le joueur
                 plugin.getScoreboardTask().createScoreboardForPlayer(player);
                 
+                // Appliquer les paramètres de visibilité pour le nouveau joueur
+                plugin.getPlayerVisibilityManager().applyVisibilityForNewPlayer(player.getUniqueId());
+                
                 // Update l'inventaire
                 player.updateInventory();
             }

@@ -7,6 +7,7 @@ import com.nerysia.plugin.grades.commands.GradeTabCompleter;
 import com.nerysia.plugin.grades.listeners.GradeDisplayListener;
 import com.nerysia.plugin.lobby.handlers.LobbyItemInteractHandler;
 import com.nerysia.plugin.lobby.handlers.LobbyJoinHandler;
+import com.nerysia.plugin.lobby.handlers.PlayerVisibilityManager;
 import com.nerysia.plugin.lobby.listeners.LobbyBlockListener;
 import com.nerysia.plugin.lobby.listeners.LobbyInventoryListener;
 import com.nerysia.plugin.lobby.listeners.LobbyProtectionListener;
@@ -17,11 +18,15 @@ public class Nerysia extends JavaPlugin {
 
     private ScoreboardTask scoreboardTask;
     private GradeManager gradeManager;
+    private PlayerVisibilityManager playerVisibilityManager;
 
     @Override
     public void onEnable() {
         // Initialiser le système de grades
         gradeManager = new GradeManager(this);
+        
+        // Initialiser le système de visibilité des joueurs
+        playerVisibilityManager = new PlayerVisibilityManager(this);
         
         // Enregistrement des commandes
         getCommand("grade").setExecutor(new GradeCommand(gradeManager, this));
@@ -32,9 +37,9 @@ public class Nerysia extends JavaPlugin {
         
         // Enregistrement des listeners du Lobby
         getServer().getPluginManager().registerEvents(new LobbyJoinHandler(this), this);
-        getServer().getPluginManager().registerEvents(new LobbyItemInteractHandler(), this);
+        getServer().getPluginManager().registerEvents(new LobbyItemInteractHandler(this), this);
         getServer().getPluginManager().registerEvents(new LobbyBlockListener(), this);
-        getServer().getPluginManager().registerEvents(new LobbyInventoryListener(), this);
+        getServer().getPluginManager().registerEvents(new LobbyInventoryListener(this), this);
         getServer().getPluginManager().registerEvents(new LobbyProtectionListener(), this);
         getServer().getPluginManager().registerEvents(new LobbyWeatherListener(), this);
         
@@ -51,6 +56,10 @@ public class Nerysia extends JavaPlugin {
 
     public GradeManager getGradeManager() {
         return gradeManager;
+    }
+
+    public PlayerVisibilityManager getPlayerVisibilityManager() {
+        return playerVisibilityManager;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.nerysia.plugin.lobby.handlers;
 
+import com.nerysia.plugin.Nerysia;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -9,8 +10,15 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class LobbyItemInteractHandler implements Listener {
+
+    private Nerysia plugin;
+
+    public LobbyItemInteractHandler(Nerysia plugin) {
+        this.plugin = plugin;
+    }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -43,7 +51,20 @@ public class LobbyItemInteractHandler implements Listener {
                 // Créer un inventaire de 9 slots (1 ligne de 9 slots)
                 Inventory inv = Bukkit.createInventory(null, 9, "§6Paramètres");
                 
-                // Vous pouvez ajouter des items dans le panneau ici
+                // Ajouter le bloc de visibilité au slot 8 (dernier slot à droite)
+                boolean playersVisible = plugin.getPlayerVisibilityManager().arePlayersVisible(player.getUniqueId());
+                Material visibilityMaterial = playersVisible ? Material.EMERALD_BLOCK : Material.REDSTONE_BLOCK;
+                ItemStack visibilityItem = new ItemStack(visibilityMaterial, 1);
+                ItemMeta visibilityMeta = visibilityItem.getItemMeta();
+                
+                if (playersVisible) {
+                    visibilityMeta.setDisplayName("§a§lJoueurs Visibles");
+                } else {
+                    visibilityMeta.setDisplayName("§c§lJoueurs Masqués");
+                }
+                
+                visibilityItem.setItemMeta(visibilityMeta);
+                inv.setItem(8, visibilityItem);
                 
                 // Ouvrir l'inventaire au joueur
                 player.openInventory(inv);
