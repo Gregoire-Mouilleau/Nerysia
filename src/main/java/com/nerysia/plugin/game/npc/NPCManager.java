@@ -9,7 +9,9 @@ import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import java.util.*;
@@ -20,21 +22,42 @@ public class NPCManager {
     private final Map<Integer, String> npcIds; // Clé = Entity ID, Valeur = nom du NPC
     private final Map<String, EntityPlayer> npcEntities; // Stocker les EntityPlayer
     private final Map<String, GameProfile> npcProfiles; // Stocker les GameProfile
+    private final Map<String, ArmorStand> npcNameTags; // Stocker les ArmorStands pour les noms
     
     public NPCManager() {
         this.npcs = new HashMap<>();
         this.npcIds = new HashMap<>();
         this.npcEntities = new HashMap<>();
         this.npcProfiles = new HashMap<>();
+        this.npcNameTags = new HashMap<>();
     }
     
     /**
      * Créer un NPC joueur pour un mode de jeu
      */
     public GameNPC createNPC(Location location, GameMode gameMode, String displayName, String skinTexture, String skinSignature) {
-        // Créer un profil de jeu avec une texture de skin
-        GameProfile profile = new GameProfile(UUID.randomUUID(), displayName);
-        profile.getProperties().put("textures", new Property("textures", skinTexture, skinSignature));
+        // Utiliser le nom avec les couleurs directement pour le GameProfile
+        String profileName = displayName;
+        
+        // Limiter à 16 caractères max pour le nom du profil (Minecraft limitation)
+        if (profileName.length() > 16) {
+            profileName = profileName.substring(0, 16);
+        }
+        
+        // Créer un profil de jeu avec une texture de skin et le nom coloré
+        GameProfile profile = new GameProfile(UUID.randomUUID(), profileName);
+        
+        // Ajouter la texture au profil
+        if (skinSignature != null && !skinSignature.isEmpty()) {
+            profile.getProperties().put("textures", new Property("textures", skinTexture, skinSignature));
+            Bukkit.getLogger().info("[NPC-CREATION] Texture ajoutée AVEC signature pour " + profileName);
+        } else {
+            profile.getProperties().put("textures", new Property("textures", skinTexture));
+            Bukkit.getLogger().info("[NPC-CREATION] Texture ajoutée SANS signature pour " + profileName);
+        }
+        
+        Bukkit.getLogger().info("[NPC-CREATION] Profile name: '" + profile.getName() + "', UUID: " + profile.getId());
+        Bukkit.getLogger().info("[NPC-CREATION] Profile properties: " + profile.getProperties());
         
         // Créer le NPC entity
         MinecraftServer nmsServer = ((CraftServer) Bukkit.getServer()).getServer();
@@ -115,6 +138,10 @@ public class NPCManager {
                 return;
             }
             
+            // Vérifier si le profil a une signature
+            boolean hasSignature = profile.getProperties().get("textures").stream()
+                .anyMatch(prop -> prop.getSignature() != null && !prop.getSignature().isEmpty());
+            
             // Packet pour ajouter le joueur à la tab list
             PacketPlayOutPlayerInfo addPlayer = new PacketPlayOutPlayerInfo(
                 PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, npc);
@@ -126,15 +153,24 @@ public class NPCManager {
             PacketPlayOutEntityHeadRotation headRotation = new PacketPlayOutEntityHeadRotation(
                 npc, (byte) ((npc.yaw * 256.0F) / 360.0F));
             
-            // Packet pour retirer de la tab list (envoyé immédiatement)
-            PacketPlayOutPlayerInfo removePlayer = new PacketPlayOutPlayerInfo(
-                PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, npc);
-            
             // Envoyer les packets dans l'ordre
             connection.sendPacket(addPlayer);
             connection.sendPacket(spawnPacket);
             connection.sendPacket(headRotation);
-            connection.sendPacket(removePlayer); // Retrait immédiat de la tab list
+            
+            // NE PAS retirer de la tab list si pas de signature (nécessaire pour le skin)
+            // Sinon, retirer après un délai pour éviter d'encombrer la tab list
+            if (hasSignature) {
+                Bukkit.getScheduler().runTaskLater(Bukkit.getPluginManager().getPlugin("Nerysia"), () -> {
+                    if (player.isOnline()) {
+                        PacketPlayOutPlayerInfo removePlayer = new PacketPlayOutPlayerInfo(
+                            PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, npc);
+                        ((CraftPlayer) player).getHandle().playerConnection.sendPacket(removePlayer);
+                    }
+                }, 100L); // 5 secondes de délai pour le chargement du skin
+            } else {
+                Bukkit.getLogger().info("[NPC-SPAWN] NPC gardé dans la tab list (pas de signature) pour: " + profile.getName());
+            }
             
         } catch (Exception e) {
             Bukkit.getLogger().severe("[NPC-SPAWN] Erreur lors du spawn du NPC pour " + player.getName() + ": " + e.getMessage());

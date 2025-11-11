@@ -46,7 +46,7 @@ public class Nerysia extends JavaPlugin {
         // Enregistrement des commandes
         getCommand("grade").setExecutor(new GradeCommand(gradeManager, this));
         getCommand("grade").setTabCompleter(new GradeTabCompleter());
-        getCommand("lobby").setExecutor(new LobbyCommand());
+        getCommand("lobby").setExecutor(new LobbyCommand(this));
         
         // Enregistrement des listeners de grades
         getServer().getPluginManager().registerEvents(new GradeDisplayListener(this), this);
@@ -101,31 +101,32 @@ public class Nerysia extends JavaPlugin {
         
         getLogger().info("[SPAWN-NPC] ✓ Monde Lobby trouvé !");
         
-        // Supprimer tous les anciens villageois du lobby pour éviter les duplications
-        npcManager.removeAllLobbyVillagers();
-        getLogger().info("[SPAWN-NPC] Anciens villageois supprimés !");
-        
         // Position de base (selon ton screenshot)
         double baseX = -203.5;
         double baseY = 27.0;
         double baseZ = -178.0;
         
-        // Texture de skin KephasAnthropos pour LOL UHC
-        String lolUhcTexture = "e3RleHR1cmVzOntTS0lOOnt1cmw6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzk2N2QxOTkyMWJlZDNkYWQxMzU5YmNjZmNiZDQxOTVlOGExOWYwYTU1NTkyZDFhOGU3OTU5MDI4Njk3YyJ9fX0=";
-        String lolUhcSignature = "";
+        // Texture de skin Teemo (League of Legends) pour LOL UHC
+        // Récupéré depuis MineSkin.org - Skin Teemo avec signature valide
+        String lolUhcTexture = "ewogICJ0aW1lc3RhbXAiIDogMTc0ODY3NDgwMTExNywKICAicHJvZmlsZUlkIiA6ICI1MDUzYTk3YTdiM2E0MTE5YTRkNjdmMDExMGIzYTZiZSIsCiAgInByb2ZpbGVOYW1lIiA6ICJhbXhraWZpciIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS85ZjJmOTRkN2U0NmRjZWQ1M2ViZGNlYWMwYmE1MjExYmU0MzlhMDViN2NlNWU2ODQ5ZTlhN2YyZWQ1ZTdhZDkxIiwKICAgICAgIm1ldGFkYXRhIiA6IHsKICAgICAgICAibW9kZWwiIDogInNsaW0iCiAgICAgIH0KICAgIH0KICB9Cn0=";
+        String lolUhcSignature = "T7pj8qAUXaTVS1vlqYP3scoW5vGT+5eHWEEMc/dhMJEqH8rFfApaQz38E7dwT/jrapTWaSOKgQoLojD7k7n013QfXIq3TA/ryIB6JtzeoVDyI2mZE2vL+wuo874fo/pA//Pgw39EfoNKh0uyIz8e/eBdFH+JoT9xarGlKJWKaINixM7Dc8ZGrPMAdN5+BM+eN9t4HREMthHuic2Zpy1MbMqeFOOhf/16gkzhCEFPn/BpEkgWi+T8Cyd2KtquujxTilxfYeYSvfrV5++fLTkRoAIS8jvC8AjExkMZlULkS0l2qR42yowa5ltkLrUqvUlABGF1R6MHvXXralZkEY4mghpVwhg1J8ktLVVhSsj3VcXNG1xU29W72aqFEC8726KvSb1y4Jvdb/1+y2vOOxCN47lcWHwFEnmp6ZJ8FKdVwvmY762sNbZEL4eZ9ncWhhd7997wz5CyHfxob7oIJvPHJB0BaKf2UxNOCXyJ92cA8pLbbj+sxlLe3rCIYqp/cx/WJ6EnDZV5obQ3+n+z9KUWZHpUHqPjtcm4SaCG+qMd2ryIYm1f2bNeTU5qc2YCX17Sw+DOervEbpaboFYrKNnpGQIC7JlXraSHbeYJ4QmeQGvPG0QJYwIb3gpy96C67KRBGIC11x6/Wvr2n0Yau1m/0RllirbLuJ3sA6e5/XWJjow=";
+        
+        // Texture de skin Arena (guerrier)
+        String arenaTexture = "ewogICJ0aW1lc3RhbXAiIDogMTcyNjkyMzk1Nzg5MiwKICAicHJvZmlsZUlkIiA6ICJlMTNhY2EzZWRlMDQ0YmI5YmY4NGNmMmIyNTM0ZGFjNyIsCiAgInByb2ZpbGVOYW1lIiA6ICJNckxhZ1N3aXRjaGEiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmM4YzI2MTNhMzBmODk3YjEyOGFkMmZiZTE0YjdkN2RhZmY0MDhiNDA2ZmJmOWRhNjI1NDU0ZmJlMTdkZjg5NyIKICAgIH0KICB9Cn0=";
+        String arenaSignature = "rzCuuxRRx633Go25XFGxY7Fx3IXqNtdW8KwZPOF0nSUc0Kz9vOXeL0uUais5EVnNRgpLXqWEOleWkBPJX4Iz47Yh29KJ3G+RLE6GQa88wW3mfKHOLS8Yd2kpqFdtD5VisUGmcW8mB2Jepo4AzyEpyclogTiiV0IcPFGLz31m00k0uBleKArsD0TAy7q9FxTiI+Ssz7Pr5jCuUcXukLXeZ3uqbbkD8b1967baM1iK4j/pzFYC028fuTfot039jdfY5HV/s3Gs67+vYbIdeKrM8c1AOdHtKPa3SuBvi8E60UhgfxJj6MI91TOaqA22AnI/WAKoEIaFvvPhg8w6wfI+FNVtuotEe2SGWz3vnBb8XhAWmAPAyHPdOxJ2HmfBDLedhWnS1gSGy4DI3CziI6zYUpyHg99oJGUuH9OMGiRvA9X2XlgomyQxjKOBjWxj6PIkRnoUNx0FUsQE3slIVwfztTMEdWQIPgvz+Fz/K+doF0swf56tWi0KGd7cC6u9V4JUZIp/tVUOD70J3B35nOCuKI09d8KsVHJCk178O6cD0qavfRs/NuVNScoZep+lDg6SEO8lf5tTdntnjgFYo2iU80cZlWMuQoALiPIUnV/axVjJcsacWCDZNQvZ5LV7SuyvAGyookBj7zp9oGy6zAQvnq05Pme1hEBDRIS4nibryag=";
         
         // Texture de skin par défaut (Steve) pour les autres
         String defaultTexture = "eyJ0aW1lc3RhbXAiOjE0MTEyNjg3OTI3NjUsInByb2ZpbGVJZCI6IjNmYmVjN2RkMGE1ZjQwYmY5ZDExODg1YTU0NTA3MTEyIiwicHJvZmlsZU5hbWUiOiJsYXN0X3VzZXJuYW1lIiwidGV4dHVyZXMiOnsiU0tJTiI6eyJ1cmwiOiJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzYwYjVlYzkxZGQ2M2I1NWM5MzE4ZGI4YmViNmI4ZDY5ZmQxMzQ1MmU0YzViOWUzZGExNGQ0NjZkY2U5NTgwIn19fQ==";
-        String defaultSignature = "";
+        String defaultSignature = null;
         
         getLogger().info("[SPAWN-NPC] Création du NPC LOL UHC...");
-        // Spawner le PNJ LOL UHC avec la texture par défaut pour tester
+        // Spawner le PNJ LOL UHC avec la texture Teemo
         Location lolUhcLoc = new Location(lobby, baseX, baseY, baseZ, 180, 0);
-        npcManager.createNPC(lolUhcLoc, GameMode.LOL_UHC, "§c§lLOL UHC", defaultTexture, defaultSignature);
+        npcManager.createNPC(lolUhcLoc, GameMode.LOL_UHC, "§c§lLOL UHC", lolUhcTexture, lolUhcSignature);
         
-        // Spawner le NPC Arena (regardant vers LOL UHC)
+        // Spawner le NPC Arena avec un skin de guerrier
         Location arenaLoc = new Location(lobby, -203.5, 27.0, -205.4, 0, 0);
-        npcManager.createNPC(arenaLoc, GameMode.ARENA, "§4§lArena", defaultTexture, defaultSignature);
+        npcManager.createNPC(arenaLoc, GameMode.ARENA, "§4§lArena", arenaTexture, arenaSignature);
         
         // Spawner le NPC Focus (à la position indiquée, regardant vers l'est)
         Location focusLoc = new Location(lobby, -217.9, 27.0, -191.5, -90, 0);

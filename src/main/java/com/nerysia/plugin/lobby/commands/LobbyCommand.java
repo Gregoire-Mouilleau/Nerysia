@@ -1,5 +1,6 @@
 package com.nerysia.plugin.lobby.commands;
 
+import com.nerysia.plugin.Nerysia;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -13,6 +14,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 
 public class LobbyCommand implements CommandExecutor {
+
+    private final Nerysia plugin;
+
+    public LobbyCommand(Nerysia plugin) {
+        this.plugin = plugin;
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -66,6 +73,12 @@ public class LobbyCommand implements CommandExecutor {
             spawnLocation.setPitch(0.0f);
             player.teleport(spawnLocation);
             player.sendMessage("§aTéléportation au lobby...");
+            
+            // Respawner les NPCs pour le joueur après un court délai
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getNPCManager().spawnAllNPCsForPlayer(player);
+            }, 10L);
+            
         } else {
             player.sendMessage("§cLe monde Lobby n'existe pas.");
         }
