@@ -14,8 +14,8 @@ public class LobbyProtectionListener implements Listener {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
             
-            // Vérifier si le joueur est dans le monde Lobby
-            if (player.getWorld().getName().equals("Lobby")) {
+            // Vérifier si le joueur est dans le monde Lobby ou arena
+            if (player.getWorld().getName().equals("Lobby") || player.getWorld().getName().equals("arena")) {
                 // Empêcher la perte de faim
                 event.setCancelled(true);
             }

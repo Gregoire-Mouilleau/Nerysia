@@ -98,12 +98,16 @@ public class ScoreboardTask implements Runnable {
             
             if (team == null) {
                 team = scoreboard.registerNewTeam(teamName);
-                // Utiliser le nom court pour le nametag
+                // Utiliser l'abréviation pour le nametag (au-dessus de la tête)
                 team.setPrefix(grade.getPrefix() + "[" + grade.getShortName() + "] §r");
                 team.setSuffix("");
             }
             
             team.addEntry(online.getName());
+            
+            // Définir le nom complet dans le TAB avec setPlayerListName
+            String tabName = grade.getPrefix() + "[" + grade.getTabName() + "] §r" + online.getName();
+            online.setPlayerListName(tabName);
         }
     }
 

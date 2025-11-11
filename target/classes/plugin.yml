@@ -10,3 +10,6 @@ commands:
     description: Gérer les grades des joueurs
     usage: /grade <joueur> <grade>
     permission: nerysia.grade
+  lobby:
+    description: Retourner au lobby
+    usage: /lobby
