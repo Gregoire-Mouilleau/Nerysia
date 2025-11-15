@@ -1,6 +1,7 @@
 package com.nerysia.plugin.game.npc;
 
 import com.nerysia.plugin.Nerysia;
+import com.nerysia.plugin.game.GameMode;
 import com.nerysia.plugin.game.gui.GameModeMenuGUI;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -84,12 +85,23 @@ public class NPCInteractListener implements Listener {
                                 // Ouvrir le menu dans le thread principal
                                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                                     try {
-                                        plugin.getLogger().info("[NPC-DEBUG] Création du GUI pour " + npc.getGameMode().getDisplayName());
-                                        GameModeMenuGUI gui = new GameModeMenuGUI(plugin, npc.getGameMode());
-                                        plugin.getLogger().info("[NPC-DEBUG] Ouverture du GUI...");
-                                        gui.open(player);
-                                        plugin.getLogger().info("[NPC-DEBUG] GUI ouvert avec succès !");
-                                        player.sendMessage("§aOuverture du menu " + npc.getGameMode().getDisplayName());
+                                        // Vérifier si c'est le NPC Arena - exécuter la commande du plugin Arena externe
+                                        if (npc.getGameMode() == GameMode.ARENA) {
+                                            plugin.getLogger().info("[NPC-DEBUG] Exécution de la commande /arena du plugin externe");
+                                            player.performCommand("arena");
+                                        } else if (npc.getGameMode() == GameMode.FOCUS) {
+                                            // Ouvrir le GUI personnalisé Focus
+                                            plugin.getLogger().info("[NPC-DEBUG] Ouverture du GUI Focus personnalisé");
+                                            plugin.getFocusGameListGUI().open(player);
+                                        } else {
+                                            // Menu standard pour les autres modes de jeu
+                                            plugin.getLogger().info("[NPC-DEBUG] Création du GUI pour " + npc.getGameMode().getDisplayName());
+                                            GameModeMenuGUI gui = new GameModeMenuGUI(plugin, npc.getGameMode());
+                                            plugin.getLogger().info("[NPC-DEBUG] Ouverture du GUI...");
+                                            gui.open(player);
+                                            plugin.getLogger().info("[NPC-DEBUG] GUI ouvert avec succès !");
+                                            player.sendMessage("§aOuverture du menu " + npc.getGameMode().getDisplayName());
+                                        }
                                     } catch (Exception e) {
                                         plugin.getLogger().severe("[NPC-DEBUG] Erreur lors de l'ouverture du GUI:");
                                         e.printStackTrace();

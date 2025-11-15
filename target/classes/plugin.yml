@@ -13,3 +13,9 @@ commands:
   lobby:
     description: Retourner au lobby
     usage: /lobby
+  ready:
+    description: Se déclarer prêt dans une partie Focus
+    usage: /ready
+  fshop:
+    description: Ouvrir le shop Focus
+    usage: /fshop

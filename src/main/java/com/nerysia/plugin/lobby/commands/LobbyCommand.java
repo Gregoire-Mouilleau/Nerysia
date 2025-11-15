@@ -68,9 +68,10 @@ public class LobbyCommand implements CommandExecutor {
         // Téléporter le joueur au spawn du monde Lobby
         World lobbyWorld = Bukkit.getWorld("Lobby");
         if (lobbyWorld != null) {
-            Location spawnLocation = new Location(lobbyWorld, -203.538, 24.0, -191.503);
-            spawnLocation.setYaw(-1.1f);
-            spawnLocation.setPitch(0.0f);
+            Location spawnLocation = new Location(lobbyWorld, -139.5, 38, -226.5);
+            // Les joueurs regardent vers l'est (yaw = -90)
+            spawnLocation.setYaw(-90f);
+            spawnLocation.setPitch(0f);
             player.teleport(spawnLocation);
             player.sendMessage("§aTéléportation au lobby...");
             

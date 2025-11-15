@@ -54,6 +54,7 @@ public class NPCManager {
         MinecraftServer server = ((CraftServer) Bukkit.getServer()).getServer();
         WorldServer world = ((CraftWorld) location.getWorld()).getHandle();
         EntityPlayer npc = new EntityPlayer(server, world, profile, new PlayerInteractManager(world));
+        // Utiliser la rotation spécifiée dans la location
         npc.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
 
         int id = npc.getId();
