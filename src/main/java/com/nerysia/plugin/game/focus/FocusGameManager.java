@@ -40,8 +40,8 @@ public class FocusGameManager {
         games.put(gameId, game);
         playerToGame.put(host.getUniqueId(), gameId);
         
-        // Créer le controller associé
-        FocusGameController controller = new FocusGameController(game, pointsManager, shopData, shopGUI);
+        // Créer le controller associé (passer this pour permettre le cleanup)
+        FocusGameController controller = new FocusGameController(game, pointsManager, shopData, shopGUI, this);
         gameControllers.put(gameId, controller);
         
         Bukkit.getLogger().info("[FOCUS] Partie créée: " + gameId + " par " + host.getName());
@@ -169,14 +169,13 @@ public class FocusGameManager {
     }
     
     /**
-     * Récupérer toutes les parties visibles (non terminées)
+     * Récupérer toutes les parties visibles (y compris les terminées pour l'historique)
      */
     public List<FocusGame> getVisibleGames() {
         List<FocusGame> visibleGames = new ArrayList<>();
         for (FocusGame game : games.values()) {
-            if (game.getState() != FocusGameState.FINISHED) {
-                visibleGames.add(game);
-            }
+            // Afficher toutes les parties, y compris FINISHED (pour l'historique)
+            visibleGames.add(game);
         }
         return visibleGames;
     }

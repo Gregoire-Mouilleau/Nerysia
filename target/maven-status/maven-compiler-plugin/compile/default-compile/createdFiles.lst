@@ -14,6 +14,7 @@ com\nerysia\plugin\game\gui\GameModeMenuGUI$1.class
 com\nerysia\plugin\lobby\listeners\LobbyWeatherListener.class
 com\nerysia\plugin\game\focus\FocusGameController.class
 com\nerysia\plugin\game\gui\GameMenuGUI$1.class
+com\nerysia\plugin\game\focus\FocusGameSettings$VictoryCondition.class
 com\nerysia\plugin\game\focus\FocusGameManager.class
 com\nerysia\plugin\game\focus\FocusShopData.class
 com\nerysia\plugin\grades\commands\GradeTabCompleter.class
@@ -60,9 +61,11 @@ com\nerysia\plugin\game\focus\FocusShopGUI$LevelSetter.class
 com\nerysia\plugin\lobby\listeners\LobbyInventoryListener.class
 com\nerysia\plugin\game\focus\FocusMapManager.class
 com\nerysia\plugin\lobby\handlers\LobbyJoinHandler.class
+com\nerysia\plugin\game\focus\FocusGameController$1.class
 com\nerysia\plugin\game\focus\listeners\FocusItemsListener$1.class
 com\nerysia\plugin\lobby\handlers\LobbyJoinHandler$1.class
 com\nerysia\plugin\minigames\listeners\MinigamesLobbyProtectionListener.class
+com\nerysia\plugin\game\focus\listeners\FocusItemsListener$3.class
 com\nerysia\plugin\game\npc\NPCCollisionPreventer.class
 com\nerysia\plugin\game\npc\NPCProtectionListener.class
 com\nerysia\plugin\game\focus\gui\FocusSettingsGUI.class

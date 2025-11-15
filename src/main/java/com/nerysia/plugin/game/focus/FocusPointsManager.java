@@ -12,12 +12,14 @@ import java.util.UUID;
 public class FocusPointsManager {
     
     private final Map<UUID, Integer> points;
-    private final Map<UUID, Integer> kills;
+    private final Map<UUID, Integer> totalKills;      // Kills totaux de la partie
+    private final Map<UUID, Integer> roundKills;      // Kills du round en cours
     private final Map<UUID, Integer> roundsWon;
     
     public FocusPointsManager() {
         this.points = new HashMap<>();
-        this.kills = new HashMap<>();
+        this.totalKills = new HashMap<>();
+        this.roundKills = new HashMap<>();
         this.roundsWon = new HashMap<>();
     }
     
@@ -48,17 +50,42 @@ public class FocusPointsManager {
     
     // ========== KILLS ==========
     
+    /**
+     * Retourne les kills TOTAUX de la partie (pour la condition de victoire)
+     */
     public int getKills(Player player) {
-        return kills.getOrDefault(player.getUniqueId(), 0);
+        return totalKills.getOrDefault(player.getUniqueId(), 0);
     }
     
+    /**
+     * Retourne les kills du round en cours (pour le classement)
+     */
+    public int getRoundKills(Player player) {
+        return roundKills.getOrDefault(player.getUniqueId(), 0);
+    }
+    
+    /**
+     * Enregistre un kill (ajouté aux kills totaux ET aux kills du round)
+     */
     public void registerKill(Player killer) {
         UUID id = killer.getUniqueId();
-        kills.put(id, kills.getOrDefault(id, 0) + 1);
+        totalKills.put(id, totalKills.getOrDefault(id, 0) + 1);
+        roundKills.put(id, roundKills.getOrDefault(id, 0) + 1);
     }
     
+    /**
+     * Reset uniquement les kills du round (appelé à chaque début de round)
+     */
+    public void resetRoundKills() {
+        roundKills.clear();
+    }
+    
+    /**
+     * @deprecated Utilisez resetRoundKills() à la place
+     */
+    @Deprecated
     public void resetKills(Player player) {
-        kills.put(player.getUniqueId(), 0);
+        roundKills.put(player.getUniqueId(), 0);
     }
     
     // ========== ROUNDS WON ==========
@@ -77,17 +104,22 @@ public class FocusPointsManager {
     public void resetPlayer(Player player) {
         UUID id = player.getUniqueId();
         points.put(id, 0);
-        kills.put(id, 0);
+        totalKills.put(id, 0);
+        roundKills.put(id, 0);
         roundsWon.put(id, 0);
     }
     
+    /**
+     * Reset uniquement les kills du round (pas les kills totaux!)
+     */
     public void resetAllKills() {
-        kills.clear();
+        roundKills.clear();
     }
     
     public void resetAll() {
         points.clear();
-        kills.clear();
+        totalKills.clear();
+        roundKills.clear();
         roundsWon.clear();
     }
 }

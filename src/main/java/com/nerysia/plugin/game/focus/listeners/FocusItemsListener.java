@@ -2,6 +2,7 @@ package com.nerysia.plugin.game.focus.listeners;
 
 import com.nerysia.plugin.Nerysia;
 import com.nerysia.plugin.game.focus.FocusGame;
+import com.nerysia.plugin.game.focus.FocusGameController;
 import com.nerysia.plugin.game.focus.FocusGameManager;
 import com.nerysia.plugin.game.focus.FocusShopData;
 
@@ -27,7 +28,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
 import java.util.*;
 
@@ -47,6 +47,9 @@ public class FocusItemsListener implements Listener {
     
     // Projectiles trackés
     private final Set<Projectile> trackedProjectiles = Collections.newSetFromMap(new WeakHashMap<>());
+    
+    // Joueurs avec no fall damage temporaire (grenade propulsive)
+    private final Set<UUID> noFallDamagePlayers = new HashSet<>();
     
     public FocusItemsListener(FocusGameManager gameManager, FocusShopData shopData) {
         this.gameManager = gameManager;
@@ -77,8 +80,8 @@ public class FocusItemsListener implements Listener {
         String displayName = item.getItemMeta().getDisplayName();
         String stripped = ChatColor.stripColor(displayName);
         
-        // Grenade Fumigène (WEB)
-        if (item.getType() == Material.WEB && stripped.contains("Grenade Fumigène")) {
+        // Grenade Fumigène (SNOW_BALL)
+        if (item.getType() == Material.SNOW_BALL && stripped.contains("Grenade Fumigène")) {
             event.setCancelled(true);
             
             Snowball snowball = player.launchProjectile(Snowball.class);
@@ -128,114 +131,132 @@ public class FocusItemsListener implements Listener {
         
         if (!snowball.hasMetadata("smoke_grenade") && !snowball.hasMetadata("molotov")) return;
         
-        Location hitLoc = snowball.getLocation();
-        
-        // Grenade fumigène - effets varient selon le tier
+        // Grenade fumigène - effets varient selon le tier (exactement comme ancien code)
         if (snowball.hasMetadata("smoke_grenade")) {
             int smokeTier = shopData.getSmokeTier(thrower.getUniqueId());
             
-            hitLoc.getWorld().playSound(hitLoc, Sound.FIZZ, 1.0f, 1.0f);
-            
-            // Nombre d'effets selon tier
-            int effectCount = 50;
-            if (smokeTier == 1) effectCount = 30;
-            else if (smokeTier == 2) effectCount = 50;
-            else if (smokeTier == 3) effectCount = 70;
-            
-            for (int i = 0; i < effectCount; i++) {
-                hitLoc.getWorld().playEffect(hitLoc.clone().add(
-                    Math.random() * 4 - 2,
-                    Math.random() * 3,
-                    Math.random() * 4 - 2
-                ), Effect.SMOKE, 0);
+            // Paramètres selon tier (comme ancien code)
+            int radius = 5;
+            int durationTicks = 10 * 20; // 10 secondes
+            if (smokeTier == 1) {
+                radius = 7;
+                durationTicks = 15 * 20; // 15 secondes
+            } else if (smokeTier == 2) {
+                radius = 10;
+                durationTicks = 20 * 20; // 20 secondes
             }
             
-            // Rayon selon tier
-            double radius = 4;
-            if (smokeTier == 1) radius = 3;
-            else if (smokeTier == 2) radius = 4;
-            else if (smokeTier == 3) radius = 5;
+            final Location impact = snowball.getLocation();
+            final int finalRadius = radius;
+            final int finalDuration = durationTicks;
             
-            // Durée selon tier (en ticks)
-            int duration = 80;
-            if (smokeTier == 1) duration = 60;
-            else if (smokeTier == 2) duration = 80;
-            else if (smokeTier == 3) duration = 100;
-            
-            for (Player p : hitLoc.getWorld().getPlayers()) {
-                if (p.getLocation().distance(hitLoc) <= radius) {
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, duration, 0));
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, duration, 1));
+            // BukkitRunnable qui tourne en boucle pour afficher les particules continuellement
+            new BukkitRunnable() {
+                int ticks = 0;
+                final Set<UUID> affected = new HashSet<>();
+                
+                @Override
+                public void run() {
+                    if (ticks >= finalDuration) {
+                        // Fin de la smoke, retirer blindness de tous les joueurs affectés
+                        for (UUID id : affected) {
+                            Player p = Bukkit.getPlayer(id);
+                            if (p != null) p.removePotionEffect(PotionEffectType.BLINDNESS);
+                        }
+                        cancel();
+                        return;
+                    }
+                    
+                    // Afficher 750 particules de fumée chaque tick
+                    for (int i = 0; i < 750; i++) {
+                        Location loc = impact.clone().add(
+                            (Math.random() - 0.5) * finalRadius * 2,
+                            Math.random() * 2.5,
+                            (Math.random() - 0.5) * finalRadius * 2
+                        );
+                        impact.getWorld().spigot().playEffect(loc, Effect.LARGE_SMOKE, 0, 0, 0, 0, 0, 0.08f, 1, 30);
+                    }
+                    
+                    // Appliquer blindness aux joueurs dans la zone
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (!p.getWorld().equals(impact.getWorld())) continue;
+                        double distSq = p.getLocation().distanceSquared(impact);
+                        if (distSq <= finalRadius * finalRadius) {
+                            if (!affected.contains(p.getUniqueId())) {
+                                p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, finalDuration - ticks, 0, false, false));
+                                affected.add(p.getUniqueId());
+                            }
+                        } else {
+                            if (affected.contains(p.getUniqueId())) {
+                                p.removePotionEffect(PotionEffectType.BLINDNESS);
+                                affected.remove(p.getUniqueId());
+                            }
+                        }
+                    }
+                    
+                    ticks++;
                 }
-            }
+            }.runTaskTimer(Nerysia.getInstance(), 0L, 1L);
         }
         
-        // Cocktail Molotov - effets varient selon le tier
+        // Cocktail Molotov - effets varient selon le tier (exactement comme ancien code)
         if (snowball.hasMetadata("molotov")) {
             int molotovTier = shopData.getMolotovTier(thrower.getUniqueId());
             
-            hitLoc.getWorld().playSound(hitLoc, Sound.GLASS, 1.0f, 0.8f);
-            
-            // Taille de la zone de feu selon tier
-            int fireRadius = 2;
-            if (molotovTier == 1) fireRadius = 1;
-            else if (molotovTier == 2) fireRadius = 2;
-            else if (molotovTier == 3) fireRadius = 3;
-            
-            List<Block> fireBlocks = new ArrayList<>();
-            for (int x = -fireRadius; x <= fireRadius; x++) {
-                for (int z = -fireRadius; z <= fireRadius; z++) {
-                    Block b = hitLoc.clone().add(x, 0, z).getBlock();
-                    if (b.getType() == Material.AIR) {
-                        b.setType(Material.FIRE);
-                        fireBlocks.add(b);
-                    }
-                }
+            // Paramètres selon tier (comme ancien code)
+            int radius = 4;
+            int burnAfterExit = 0;
+            if (molotovTier == 1) {
+                radius = 6;
+                burnAfterExit = 2;
+            } else if (molotovTier == 2) {
+                radius = 7;
+                burnAfterExit = 4;
             }
             
-            // Durée du feu selon tier (en ticks)
-            long fireDuration = 100L;
-            if (molotovTier == 1) fireDuration = 80L;
-            else if (molotovTier == 2) fireDuration = 100L;
-            else if (molotovTier == 3) fireDuration = 120L;
+            final Location impactLocation = snowball.getLocation();
+            final int radiusFinal = radius;
+            final int burnTimeFinal = burnAfterExit * 20;
             
-            // Retirer le feu après le délai
+            // BukkitRunnable qui tourne en boucle pour afficher les particules de feu continuellement
             new BukkitRunnable() {
+                int ticks = 0;
+                final Set<UUID> burning = new HashSet<>();
+                
                 @Override
                 public void run() {
-                    for (Block b : fireBlocks) {
-                        if (b.getType() == Material.FIRE) {
-                            b.setType(Material.AIR);
+                    if (ticks >= 100) {
+                        // Fin du molotov, appliquer burn final aux joueurs qui étaient dedans
+                        for (UUID uuid : burning) {
+                            Player p = Bukkit.getPlayer(uuid);
+                            if (p != null) p.setFireTicks(burnTimeFinal);
+                        }
+                        cancel();
+                        return;
+                    }
+                    
+                    // Afficher 100 particules de flamme toutes les 5 ticks
+                    for (int i = 0; i < 100; i++) {
+                        Location loc = impactLocation.clone().add(
+                            (Math.random() - 0.5) * radiusFinal * 2,
+                            0.1,
+                            (Math.random() - 0.5) * radiusFinal * 2
+                        );
+                        impactLocation.getWorld().spigot().playEffect(loc, Effect.FLAME, 0, 0, 0, 0, 0, 0.01f, 5, 30);
+                    }
+                    
+                    // Mettre le feu aux joueurs dans la zone
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        if (!p.getWorld().equals(impactLocation.getWorld())) continue;
+                        if (p.getLocation().distance(impactLocation) <= radiusFinal) {
+                            p.setFireTicks(20);
+                            burning.add(p.getUniqueId());
                         }
                     }
+                    
+                    ticks += 5;
                 }
-            }.runTaskLater(Nerysia.getInstance(), fireDuration);
-            
-            // Dégâts et effet de feu selon tier
-            double damageRadius = 3;
-            double damage = 4.0;
-            int fireTicks = 60;
-            
-            if (molotovTier == 1) {
-                damageRadius = 2;
-                damage = 3.0;
-                fireTicks = 40;
-            } else if (molotovTier == 2) {
-                damageRadius = 3;
-                damage = 4.0;
-                fireTicks = 60;
-            } else if (molotovTier == 3) {
-                damageRadius = 4;
-                damage = 5.0;
-                fireTicks = 80;
-            }
-            
-            for (Player p : hitLoc.getWorld().getPlayers()) {
-                if (p.getLocation().distance(hitLoc) <= damageRadius) {
-                    p.damage(damage);
-                    p.setFireTicks(fireTicks);
-                }
-            }
+            }.runTaskTimer(Nerysia.getInstance(), 0L, 5L);
         }
     }
     
@@ -244,62 +265,84 @@ public class FocusItemsListener implements Listener {
     @EventHandler
     public void onPlayerPlaceMine(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+        ItemStack inHand = player.getItemInHand();
+        if (inHand == null || inHand.getType() != Material.REDSTONE) return;
+        
         FocusGame game = gameManager.getPlayerGame(player.getUniqueId());
         if (game == null) return;
         
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        
-        ItemStack item = event.getItem();
-        if (item == null || item.getType() != Material.STONE_PLATE) return;
-        if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
-        
-        String displayName = item.getItemMeta().getDisplayName();
+        if (!inHand.hasItemMeta() || !inHand.getItemMeta().hasDisplayName()) return;
+        String displayName = inHand.getItemMeta().getDisplayName();
         if (!ChatColor.stripColor(displayName).contains("Mine")) return;
-        
-        event.setCancelled(true);
         
         // Une seule mine par round
         if (alreadyPlacedMineThisRound.contains(player.getUniqueId())) {
-            player.sendMessage(ChatColor.RED + "Vous avez déjà posé une mine ce round !");
+            player.sendMessage(ChatColor.RED + "Tu as déjà posé une mine cette manche.");
             return;
         }
         
-        Block clickedBlock = event.getClickedBlock();
-        Block mineBlock = clickedBlock.getRelative(event.getBlockFace());
+        event.setCancelled(true);
         
-        if (mineBlock.getType() != Material.AIR) {
-            player.sendMessage(ChatColor.RED + "Vous ne pouvez pas placer la mine ici !");
+        Block targetBlock = player.getTargetBlock((Set<Material>) null, 5);
+        if (targetBlock == null || targetBlock.getType() == Material.AIR || !targetBlock.getType().isSolid()) {
+            player.sendMessage(ChatColor.RED + "Tu ne peux pas poser une mine ici.");
             return;
         }
         
-        // Placer la plaque de pression
-        mineBlock.setType(Material.STONE_PLATE);
+        // Liste des blocs décoratifs à exclure
+        Material type = targetBlock.getType();
+        if (type == Material.LONG_GRASS ||
+            type == Material.DOUBLE_PLANT ||
+            type == Material.YELLOW_FLOWER ||
+            type == Material.RED_ROSE ||
+            type == Material.DEAD_BUSH ||
+            type == Material.SAPLING ||
+            type == Material.CARPET) {
+            player.sendMessage(ChatColor.RED + "Tu ne peux pas poser une mine sur ce type de bloc.");
+            return;
+        }
         
-        Location mineLoc = mineBlock.getLocation();
-        placedMines.put(mineLoc, player.getUniqueId());
-        mineArmedTime.put(mineLoc, System.currentTimeMillis() + 2000); // Armée après 2 secondes
+        Location loc = targetBlock.getLocation();
+        
+        if (placedMines.containsKey(loc)) {
+            player.sendMessage(ChatColor.RED + "Une mine est déjà posée ici !");
+            return;
+        }
+        
+        placedMines.put(loc, player.getUniqueId());
+        mineArmedTime.put(loc, System.currentTimeMillis() + 3000); // 3 secondes
         alreadyPlacedMineThisRound.add(player.getUniqueId());
         
-        // Retirer l'item de l'inventaire
-        if (item.getAmount() > 1) {
-            item.setAmount(item.getAmount() - 1);
+        ItemStack held = player.getItemInHand();
+        if (held.getAmount() > 1) {
+            held.setAmount(held.getAmount() - 1);
         } else {
             player.setItemInHand(null);
         }
         
-        player.sendMessage(ChatColor.GREEN + "Mine posée ! Elle s'armera dans 2 secondes...");
-        player.playSound(player.getLocation(), Sound.CLICK, 1.0f, 1.0f);
+        player.sendMessage(ChatColor.RED + "Mine posée !");
         
-        // Effet visuel d'armement
+        // Effet visuel de particules rouges qui tournent
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (mineBlock.getType() == Material.STONE_PLATE) {
-                    mineBlock.getWorld().playSound(mineLoc, Sound.CLICK, 1.0f, 2.0f);
-                    player.sendMessage(ChatColor.YELLOW + "Mine armée !");
+                if (!placedMines.containsKey(loc)) {
+                    cancel();
+                    return;
+                }
+                
+                Player placer = Bukkit.getPlayer(placedMines.get(loc));
+                if (placer != null) {
+                    placer.spigot().playEffect(
+                        loc.clone().add(0.5, 1.1, 0.5),
+                        Effect.COLOURED_DUST,
+                        1, 0,
+                        0.8f, 0f, 0f,
+                        1f, 0, 16
+                    );
                 }
             }
-        }.runTaskLater(Nerysia.getInstance(), 40L);
+        }.runTaskTimer(Nerysia.getInstance(), 0L, 4L);
     }
     
     @EventHandler
@@ -308,35 +351,52 @@ public class FocusItemsListener implements Listener {
         FocusGame game = gameManager.getPlayerGame(player.getUniqueId());
         if (game == null) return;
         
-        Block blockBelow = player.getLocation().getBlock().getRelative(0, -1, 0);
-        if (blockBelow.getType() != Material.STONE_PLATE) return;
+        Location underFeet = player.getLocation().clone().subtract(0, 1, 0).getBlock().getLocation();
         
-        Location mineLoc = blockBelow.getLocation();
-        if (!placedMines.containsKey(mineLoc)) return;
-        
-        // Vérifier si la mine est armée
-        long armedTime = mineArmedTime.getOrDefault(mineLoc, 0L);
-        if (System.currentTimeMillis() < armedTime) return;
-        
-        UUID placerId = placedMines.get(mineLoc);
-        
-        // Ne pas exploser sur le joueur qui l'a posée
-        if (player.getUniqueId().equals(placerId)) return;
-        
-        // Explosion !
-        blockBelow.setType(Material.AIR);
-        placedMines.remove(mineLoc);
-        mineArmedTime.remove(mineLoc);
-        
-        Location explosionLoc = mineLoc.clone().add(0.5, 0, 0.5);
-        explosionLoc.getWorld().createExplosion(explosionLoc, 3.0f, false);
-        
-        player.damage(8.0);
-        player.setVelocity(player.getLocation().getDirection().multiply(-1).setY(0.8));
-        
-        Player placer = Bukkit.getPlayer(placerId);
-        if (placer != null) {
-            placer.sendMessage(ChatColor.GREEN + "Votre mine a explosé sur " + player.getName() + " !");
+        for (Map.Entry<Location, UUID> entry : placedMines.entrySet()) {
+            Location mineLoc = entry.getKey();
+            
+            if (!mineLoc.equals(underFeet)) continue;
+            
+            long readyTime = mineArmedTime.getOrDefault(mineLoc, 0L);
+            if (System.currentTimeMillis() < readyTime) continue;
+            
+            // Tier 0 par défaut
+            int mineTier = 0;
+            
+            final int damage;
+            final double radiusSquared;
+            
+            if (mineTier == 1) {
+                damage = 20;
+                radiusSquared = 1.5; // ≈ rayon 1 bloc
+            } else if (mineTier == 2) {
+                damage = 30;
+                radiusSquared = 2.0;
+            } else if (mineTier == 3) {
+                damage = 40;
+                radiusSquared = 2.25;
+            } else {
+                damage = 14;
+                radiusSquared = 1.0;
+            }
+            
+            Location explosionLoc = mineLoc.clone().add(0.5, 0.5, 0.5);
+            mineLoc.getWorld().playSound(explosionLoc, Sound.CLICK, 1.0f, 0.5f);
+            
+            Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
+                explosionLoc.getWorld().playSound(explosionLoc, Sound.EXPLODE, 1.5f, 1.0f);
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!p.getWorld().equals(explosionLoc.getWorld())) continue;
+                    if (p.getLocation().distanceSquared(explosionLoc) <= radiusSquared) {
+                        p.damage(damage);
+                    }
+                }
+                placedMines.remove(mineLoc);
+                mineArmedTime.remove(mineLoc);
+            }, 1L);
+            
+            break;
         }
     }
     
@@ -345,34 +405,66 @@ public class FocusItemsListener implements Listener {
     @EventHandler
     public void onPlayerPlacePropulseGrenade(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+        ItemStack inHand = player.getItemInHand();
+        
+        if (inHand == null || inHand.getType() != Material.FEATHER) return;
+        if (!inHand.hasItemMeta() || !inHand.getItemMeta().hasDisplayName()) return;
+        
+        String displayName = inHand.getItemMeta().getDisplayName();
+        if (!ChatColor.stripColor(displayName).contains("Grenade Propulse")) return;
+        
         FocusGame game = gameManager.getPlayerGame(player.getUniqueId());
         if (game == null) return;
         
-        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-        
-        ItemStack item = event.getItem();
-        if (item == null || item.getType() != Material.FEATHER) return;
-        if (!item.hasItemMeta() || !item.getItemMeta().hasDisplayName()) return;
-        
-        String displayName = item.getItemMeta().getDisplayName();
-        if (!ChatColor.stripColor(displayName).contains("Grenade Propulse")) return;
-        
         event.setCancelled(true);
         
-        // Propulser le joueur
-        Vector direction = player.getLocation().getDirection();
-        player.setVelocity(direction.multiply(2).setY(1));
-        
-        player.playSound(player.getLocation(), Sound.FIREWORK_LAUNCH, 1.0f, 1.0f);
-        player.getWorld().playEffect(player.getLocation(), Effect.SMOKE, 0);
-        
-        // Retirer l'item
-        if (item.getAmount() > 1) {
-            item.setAmount(item.getAmount() - 1);
+        // Retrait de l'item
+        if (inHand.getAmount() > 1) {
+            inHand.setAmount(inHand.getAmount() - 1);
         } else {
             player.setItemInHand(null);
+        }
+        
+        // Effet d'explosion + propulsion immédiate (exactement comme ancien code)
+        Location loc = player.getLocation();
+        player.getWorld().playSound(loc, Sound.EXPLODE, 1.5f, 1.2f);
+        player.getWorld().spigot().playEffect(loc.clone().add(0, 0.5, 0), Effect.EXPLOSION_LARGE, 0, 0, 0, 0, 0, 0, 1, 30);
+        
+        // Propulsion vers l'avant (exactement comme ancien code)
+        player.setVelocity(player.getLocation().getDirection().multiply(1.5).setY(1));
+        
+        // Retirer les dégâts de chute pendant 3 secondes
+        noFallDamagePlayers.add(player.getUniqueId());
+        Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
+            noFallDamagePlayers.remove(player.getUniqueId());
+        }, 60L); // 3 secondes
+    }
+    
+    // ==================== PROTECTION FALL DAMAGE ====================
+    
+    @EventHandler
+    public void onPlayerFallDamage(org.bukkit.event.entity.EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        if (event.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL) return;
+        
+        Player player = (Player) event.getEntity();
+        
+        // Protection pour les bottes (permanent)
+        FocusGame game = gameManager.getPlayerGame(player.getUniqueId());
+        if (game != null) {
+            FocusGameController controller = gameManager.getGameController(game);
+            if (controller != null) {
+                FocusShopData shopData = controller.getShopData();
+                if (shopData.getBootsLevel(player.getUniqueId()) > 0) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+        
+        // Protection temporaire pour grenade propulsive
+        if (noFallDamagePlayers.contains(player.getUniqueId())) {
+            event.setCancelled(true);
         }
     }
     

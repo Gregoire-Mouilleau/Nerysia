@@ -4,6 +4,7 @@ import com.nerysia.plugin.Nerysia;
 import com.nerysia.plugin.game.focus.FocusGame;
 import com.nerysia.plugin.game.focus.FocusGameManager;
 import com.nerysia.plugin.game.focus.FocusGameSettings;
+import com.nerysia.plugin.game.focus.FocusGameSettings.VictoryCondition;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -38,7 +39,7 @@ public class FocusSettingsGUI implements Listener {
         }
         
         this.viewer = player;
-        this.inventory = Bukkit.createInventory(null, 27, "§e§lFocus - Paramètres");
+        this.inventory = Bukkit.createInventory(null, 54, "§e§lFocus - Paramètres");
         
         updateItems(game);
         player.openInventory(inventory);
@@ -48,7 +49,16 @@ public class FocusSettingsGUI implements Listener {
         inventory.clear();
         FocusGameSettings settings = game.getSettings();
         
-        // Nombre de joueurs maximum
+        // Vitre grise partout
+        ItemStack glass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 7);
+        ItemMeta glassMeta = glass.getItemMeta();
+        glassMeta.setDisplayName(" ");
+        glass.setItemMeta(glassMeta);
+        for (int i = 0; i < 54; i++) {
+            inventory.setItem(i, glass);
+        }
+        
+        // Nombre de joueurs maximum (slot 10)
         ItemStack maxPlayers = new ItemStack(Material.SKULL_ITEM, settings.getMaxPlayers(), (short) 3);
         ItemMeta maxPlayersMeta = maxPlayers.getItemMeta();
         maxPlayersMeta.setDisplayName("§a§lNombre de Joueurs Max");
@@ -61,55 +71,61 @@ public class FocusSettingsGUI implements Listener {
         maxPlayers.setItemMeta(maxPlayersMeta);
         inventory.setItem(10, maxPlayers);
         
-        // Difficulté
-        ItemStack difficulty = new ItemStack(Material.DIAMOND_SWORD);
-        ItemMeta difficultyMeta = difficulty.getItemMeta();
-        difficultyMeta.setDisplayName("§c§lDifficulté");
-        List<String> difficultyLore = new ArrayList<>();
-        difficultyLore.add("§7Actuel: " + settings.getDifficultyName());
-        difficultyLore.add("");
-        difficultyLore.add("§a1. Facile");
-        difficultyLore.add("§e2. Normal");
-        difficultyLore.add("§c3. Difficile");
-        difficultyLore.add("");
-        difficultyLore.add("§e➤ Cliquez pour changer");
-        difficultyMeta.setLore(difficultyLore);
-        difficulty.setItemMeta(difficultyMeta);
-        inventory.setItem(12, difficulty);
+        // Condition de victoire (slot 13)
+        ItemStack victoryCondition = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta victoryMeta = victoryCondition.getItemMeta();
+        victoryMeta.setDisplayName("§6§lCondition de Victoire");
+        List<String> victoryLore = new ArrayList<>();
+        victoryLore.add("§7Actuel: " + settings.getVictoryConditionName());
+        victoryLore.add("");
+        victoryLore.add("§e➤ Cliquez pour changer:");
+        victoryLore.add((settings.getVictoryCondition() == VictoryCondition.KILLS ? "§a➤ " : "§7  ") + "Kills");
+        victoryLore.add((settings.getVictoryCondition() == VictoryCondition.ROUNDS ? "§a➤ " : "§7  ") + "Rounds");
+        victoryLore.add((settings.getVictoryCondition() == VictoryCondition.KILLS_AND_ROUNDS ? "§a➤ " : "§7  ") + "Kills + Rounds");
+        victoryMeta.setLore(victoryLore);
+        victoryCondition.setItemMeta(victoryMeta);
+        inventory.setItem(13, victoryCondition);
         
-        // Temps par round
-        ItemStack roundTime = new ItemStack(Material.WATCH);
-        ItemMeta roundTimeMeta = roundTime.getItemMeta();
-        roundTimeMeta.setDisplayName("§b§lTemps par Round");
-        List<String> roundTimeLore = new ArrayList<>();
-        roundTimeLore.add("§7Actuel: §e" + settings.getRoundTime() + " secondes");
-        roundTimeLore.add("");
-        roundTimeLore.add("§e➤ Clic gauche: §a+10s");
-        roundTimeLore.add("§e➤ Clic droit: §c-10s");
-        roundTimeLore.add("§e➤ Shift + Clic gauche: §a+30s");
-        roundTimeLore.add("§e➤ Shift + Clic droit: §c-30s");
-        roundTimeMeta.setLore(roundTimeLore);
-        roundTime.setItemMeta(roundTimeMeta);
-        inventory.setItem(14, roundTime);
+        // Kills pour gagner (slot 20) - visible si KILLS ou KILLS_AND_ROUNDS
+        if (settings.getVictoryCondition() == VictoryCondition.KILLS || 
+            settings.getVictoryCondition() == VictoryCondition.KILLS_AND_ROUNDS) {
+            ItemStack killsItem = new ItemStack(Material.SKULL_ITEM, 1, (short) 1);
+            ItemMeta killsMeta = killsItem.getItemMeta();
+            killsMeta.setDisplayName("§c§lKills pour gagner");
+            List<String> killsLore = new ArrayList<>();
+            killsLore.add("§7Actuel: §e" + settings.getKillsToWin() + " kills");
+            killsLore.add("");
+            killsLore.add("§e➤ Clic gauche: §a+1");
+            killsLore.add("§e➤ Clic droit: §c-1");
+            killsLore.add("§e➤ Shift + Clic: §a±5");
+            killsMeta.setLore(killsLore);
+            killsItem.setItemMeta(killsMeta);
+            inventory.setItem(20, killsItem);
+        }
         
-        // Spectateurs autorisés
-        ItemStack spectators = new ItemStack(settings.isAllowSpectators() ? Material.EMERALD : Material.REDSTONE);
-        ItemMeta spectatorsMeta = spectators.getItemMeta();
-        spectatorsMeta.setDisplayName("§d§lAutoriser les Spectateurs");
-        List<String> spectatorsLore = new ArrayList<>();
-        spectatorsLore.add("§7État: " + (settings.isAllowSpectators() ? "§aActivé" : "§cDésactivé"));
-        spectatorsLore.add("");
-        spectatorsLore.add("§e➤ Cliquez pour " + (settings.isAllowSpectators() ? "§cdésactiver" : "§aactiver"));
-        spectatorsMeta.setLore(spectatorsLore);
-        spectators.setItemMeta(spectatorsMeta);
-        inventory.setItem(16, spectators);
+        // Rounds pour gagner (slot 24) - visible si ROUNDS ou KILLS_AND_ROUNDS
+        if (settings.getVictoryCondition() == VictoryCondition.ROUNDS || 
+            settings.getVictoryCondition() == VictoryCondition.KILLS_AND_ROUNDS) {
+            ItemStack roundsItem = new ItemStack(Material.WATCH);
+            ItemMeta roundsMeta = roundsItem.getItemMeta();
+            roundsMeta.setDisplayName("§a§lRounds pour gagner");
+            List<String> roundsLore = new ArrayList<>();
+            roundsLore.add("§7Actuel: §e" + settings.getRoundsToWin() + " rounds");
+            roundsLore.add("");
+            roundsLore.add("§e➤ Clic gauche: §a+1");
+            roundsLore.add("§e➤ Clic droit: §c-1");
+            roundsLore.add("§e➤ Shift + Clic: §a±5");
+            roundsMeta.setLore(roundsLore);
+            roundsItem.setItemMeta(roundsMeta);
+            inventory.setItem(24, roundsItem);
+        }
         
-        // Bouton retour
+        // Bouton retour (slot 49)
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta backMeta = back.getItemMeta();
         backMeta.setDisplayName("§e§lRetour");
         back.setItemMeta(backMeta);
-        inventory.setItem(22, back);
+        inventory.setItem(49, back);
     }
     
     @EventHandler
@@ -157,39 +173,62 @@ public class FocusSettingsGUI implements Listener {
                 }
                 break;
                 
-            case 12: // Difficulté
-                int newDifficulty = settings.getDifficulty() + 1;
-                if (newDifficulty > 3) newDifficulty = 1;
-                settings.setDifficulty(newDifficulty);
+            case 13: // Condition de victoire
+                VictoryCondition current = settings.getVictoryCondition();
+                VictoryCondition next;
+                
+                if (current == VictoryCondition.KILLS) {
+                    next = VictoryCondition.ROUNDS;
+                } else if (current == VictoryCondition.ROUNDS) {
+                    next = VictoryCondition.KILLS_AND_ROUNDS;
+                } else {
+                    next = VictoryCondition.KILLS;
+                }
+                
+                settings.setVictoryCondition(next);
+                player.sendMessage("§a[Focus] §7Condition de victoire: " + settings.getVictoryConditionName());
                 needUpdate = true;
                 break;
                 
-            case 14: // Temps par round
+            case 20: // Kills pour gagner
+                int currentKills = settings.getKillsToWin();
                 if (event.isShiftClick()) {
                     if (event.isLeftClick()) {
-                        settings.setRoundTime(Math.min(300, settings.getRoundTime() + 30));
-                        needUpdate = true;
+                        settings.setKillsToWin(currentKills + 5);
                     } else if (event.isRightClick()) {
-                        settings.setRoundTime(Math.max(30, settings.getRoundTime() - 30));
-                        needUpdate = true;
+                        settings.setKillsToWin(currentKills - 5);
                     }
                 } else {
                     if (event.isLeftClick()) {
-                        settings.setRoundTime(Math.min(300, settings.getRoundTime() + 10));
-                        needUpdate = true;
+                        settings.setKillsToWin(currentKills + 1);
                     } else if (event.isRightClick()) {
-                        settings.setRoundTime(Math.max(30, settings.getRoundTime() - 10));
-                        needUpdate = true;
+                        settings.setKillsToWin(currentKills - 1);
                     }
                 }
-                break;
-                
-            case 16: // Spectateurs
-                settings.setAllowSpectators(!settings.isAllowSpectators());
+                player.sendMessage("§a[Focus] §7Kills pour gagner: §e" + settings.getKillsToWin());
                 needUpdate = true;
                 break;
                 
-            case 22: // Retour
+            case 24: // Rounds pour gagner
+                int currentRounds = settings.getRoundsToWin();
+                if (event.isShiftClick()) {
+                    if (event.isLeftClick()) {
+                        settings.setRoundsToWin(currentRounds + 5);
+                    } else if (event.isRightClick()) {
+                        settings.setRoundsToWin(currentRounds - 5);
+                    }
+                } else {
+                    if (event.isLeftClick()) {
+                        settings.setRoundsToWin(currentRounds + 1);
+                    } else if (event.isRightClick()) {
+                        settings.setRoundsToWin(currentRounds - 1);
+                    }
+                }
+                player.sendMessage("§a[Focus] §7Rounds pour gagner: §e" + settings.getRoundsToWin());
+                needUpdate = true;
+                break;
+                
+            case 49: // Retour
                 player.closeInventory();
                 return;
         }

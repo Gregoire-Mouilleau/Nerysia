@@ -142,7 +142,7 @@ public class FocusGameListGUI implements Listener {
             case IN_PROGRESS:
                 return 14; // Rouge
             case FINISHED:
-                return 7; // Gris foncé
+                return 15; // Noir (vitre noire pour l'historique)
             default:
                 return 0; // Blanc
         }
@@ -235,12 +235,6 @@ public class FocusGameListGUI implements Listener {
     }
     
     private void createNewGame(Player player) {
-        // Vérifier si le joueur n'est pas déjà dans une partie
-        if (gameManager.isPlayerInGame(player.getUniqueId())) {
-            player.sendMessage("§c[Focus] §7Vous êtes déjà dans une partie !");
-            return;
-        }
-        
         // Créer la partie
         FocusGame game = gameManager.createGame(player);
         
