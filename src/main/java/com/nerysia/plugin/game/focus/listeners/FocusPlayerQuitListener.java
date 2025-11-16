@@ -57,6 +57,14 @@ public class FocusPlayerQuitListener implements Listener {
                         p.sendMessage(message);
                     }
                 }
+                
+                // Vérifier si le round doit se terminer (1 seul joueur vivant)
+                com.nerysia.plugin.game.focus.FocusGameController controller = gameManager.getGameController(game);
+                if (controller != null) {
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        controller.checkRoundEnd();
+                    }, 5L); // Petit délai pour que la déconnexion soit complète
+                }
             }
         }
     }

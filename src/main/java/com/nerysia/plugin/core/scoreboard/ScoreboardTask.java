@@ -38,6 +38,12 @@ public class ScoreboardTask implements Runnable {
         animationState = (animationState + 1) % titleAnimation.length;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
+            // Ne pas toucher aux joueurs en partie Focus
+            if (plugin.getFocusGameManager() != null && 
+                plugin.getFocusGameManager().getPlayerGame(player.getUniqueId()) != null) {
+                continue; // Ignorer les joueurs dans une partie Focus
+            }
+            
             // Vérifier si le joueur est dans le monde Lobby
             if (player.getWorld().getName().equals("Lobby")) {
                 updateScoreboard(player, currentTitle);

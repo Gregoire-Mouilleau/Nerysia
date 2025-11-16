@@ -20,10 +20,13 @@ public class FocusGameController {
     public enum State {
         WAITING,      // En attente dans spawn_minijeux
         LOBBY,        // Dans le lobby de la map Focus
+        PREPARATION,  // Phase de préparation avant premier round
         INGAME,       // Round en cours
         ROUND_END,    // Fin de round (affichage résultats)
         GAME_END      // Fin de partie (affichage winner)
     }
+    
+    private static final int STARTING_POINTS = 10; // Points de départ
     
     private final FocusGame game;
     private final FocusPointsManager pointsManager;
@@ -31,6 +34,7 @@ public class FocusGameController {
     private final FocusShopGUI shopGUI;
     private final FocusMapManager mapManager;
     private final FocusGameManager gameManager; // Pour nettoyer les joueurs à la fin
+    private final FocusScoreboardManager scoreboardManager;
     
     private State state;
     private final Set<UUID> readyPlayers;
@@ -49,12 +53,18 @@ public class FocusGameController {
         this.shopGUI = shopGUI;
         this.mapManager = new FocusMapManager();
         this.gameManager = gameManager;
+        this.scoreboardManager = new FocusScoreboardManager(game, pointsManager);
         this.state = State.WAITING;
         this.readyPlayers = new HashSet<>();
         this.alivePlayers = new HashMap<>();
         this.victoryTimestamp = new HashMap<>();
         this.gameWorld = null;
         this.spawnWorld = null;
+        
+        // Démarrer l'animation du scoreboard (1 seconde = 20 ticks)
+        Bukkit.getScheduler().runTaskTimer(Nerysia.getInstance(), () -> {
+            scoreboardManager.tickAnimation();
+        }, 0L, 20L);
     }
     
     public State getState() {
@@ -71,6 +81,45 @@ public class FocusGameController {
     
     public void setAlive(Player player, boolean alive) {
         alivePlayers.put(player.getUniqueId(), alive);
+    }
+    
+    public FocusGame getGame() {
+        return game;
+    }
+    
+    /**
+     * Met à jour le scoreboard d'un joueur spécifique
+     */
+    public void updatePlayerScoreboard(Player player) {
+        scoreboardManager.updateOrCreateScoreboard(player);
+    }
+    
+    /**
+     * Vérifie si le round doit se terminer (1 seul joueur vivant)
+     */
+    public void checkRoundEnd() {
+        // Seulement si on est en jeu
+        if (state != State.INGAME) return;
+        
+        // Compter les joueurs vivants (non-spectateur et dans la partie)
+        List<Player> alivePlayers = new ArrayList<>();
+        for (UUID playerId : game.getPlayers()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline() && player.getGameMode() != GameMode.SPECTATOR) {
+                alivePlayers.add(player);
+            }
+        }
+        
+        // Si 1 seul joueur vivant, il gagne le round
+        if (alivePlayers.size() == 1) {
+            Player winner = alivePlayers.get(0);
+            Bukkit.getLogger().info("[Focus] Un seul joueur vivant, " + winner.getName() + " remporte le round !");
+            endRound(winner);
+        } else if (alivePlayers.size() == 0) {
+            // Aucun joueur vivant (tous déco), retour au lobby sans winner
+            Bukkit.getLogger().info("[Focus] Aucun joueur vivant, retour au lobby");
+            returnToLobby();
+        }
     }
     
     // ========== MAP MANAGEMENT ==========
@@ -124,7 +173,7 @@ public class FocusGameController {
     // ========== READY SYSTEM ==========
     
     public void toggleReady(Player player) {
-        if (state != State.WAITING && state != State.LOBBY) {
+        if (state != State.WAITING && state != State.LOBBY && state != State.PREPARATION) {
             player.sendMessage(ChatColor.RED + "La partie est déjà en cours !");
             return;
         }
@@ -146,6 +195,52 @@ public class FocusGameController {
     
     public boolean isPlayerReady(Player player) {
         return readyPlayers.contains(player.getUniqueId());
+    }
+    
+    // ========== PREPARATION PHASE ==========
+    
+    public void startPreparation() {
+        state = State.PREPARATION;
+        readyPlayers.clear();
+        
+        // Donner les points de départ à tous les joueurs
+        for (UUID playerId : game.getPlayers()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                pointsManager.addPoints(player, STARTING_POINTS);
+                // Créer le scoreboard pour le joueur
+                scoreboardManager.createScoreboard(player);
+            }
+        }
+        
+        // Téléporter au spawn_minijeux et donner l'accès au shop
+        Location spawnLocation = getSpawnMinijeux();
+        
+        for (Player player : getOnlinePlayers()) {
+            player.teleport(spawnLocation);
+            player.setHealth(20.0);
+            player.setFoodLevel(20);
+            player.setGameMode(GameMode.SURVIVAL);
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            
+            // Retirer tous les effets
+            for (org.bukkit.potion.PotionEffect effect : player.getActivePotionEffects()) {
+                player.removePotionEffect(effect.getType());
+            }
+            
+            // Donner l'équipement de lobby (false = pas en jeu, donne l'item du shop)
+            shopGUI.givePlayerEquipment(player, false);
+            
+            // Ouvrir automatiquement le shop
+            shopGUI.open(player, this);
+        }
+        
+        broadcast(ChatColor.GREEN + "╬══════════════════════════════╬");
+        broadcast(ChatColor.GOLD + "  Phase de préparation");
+        broadcast(ChatColor.YELLOW + "  Vous avez reçu " + STARTING_POINTS + " points de départ !");
+        broadcast(ChatColor.YELLOW + "  Achetez votre équipement puis tapez /ready");
+        broadcast(ChatColor.GREEN + "╰══════════════════════════════╯");
     }
     
     private void startCountdown() {
@@ -218,6 +313,9 @@ public class FocusGameController {
         
         broadcast(ChatColor.GOLD + "========== ROUND COMMENCE ==========");
         broadcast(ChatColor.YELLOW + "Dernier joueur en vie remporte le round !");
+        
+        // Mettre à jour les scoreboards
+        scoreboardManager.updateAllScoreboards();
     }
     
     private List<Location> getMapSpawns() {
@@ -260,7 +358,13 @@ public class FocusGameController {
             pointsManager.registerKill(killer);
             pointsManager.addPoints(killer, 2); // 2 points par kill
             killer.sendMessage(ChatColor.GREEN + "+2 points pour le kill !");
+            
+            // Mettre à jour le scoreboard du tueur
+            scoreboardManager.updateOrCreateScoreboard(killer);
         }
+        
+        // Mettre à jour aussi le scoreboard de la victime (pour voir le top 3 actualisé)
+        scoreboardManager.updateAllScoreboards();
         
         // Vérifier s'il reste qu'un seul joueur en vie
         List<Player> alive = getAlivePlayers();
@@ -309,6 +413,9 @@ public class FocusGameController {
         } else {
             broadcast(ChatColor.RED + "Aucun gagnant pour ce round !");
         }
+        
+        // Mettre à jour les scoreboards après l'attribution des points
+        scoreboardManager.updateAllScoreboards();
         
         // Vérifier si quelqu'un a gagné la partie (vérifier TOUS les joueurs, pas seulement le winner du round)
         Player gameWinner = checkAllPlayersForVictory();
@@ -395,8 +502,8 @@ public class FocusGameController {
         state = State.LOBBY;
         readyPlayers.clear(); // Reset les ready pour le prochain round
         
-        // Reset kills du round
-        pointsManager.resetAllKills();
+        // Reset kills du round (pas les kills totaux)
+        pointsManager.resetRoundKills();
         
         // Sauvegarder les items consommables non utilisés de tous les joueurs (vivants et morts)
         for (Player player : getOnlinePlayers()) {
@@ -429,6 +536,9 @@ public class FocusGameController {
             // Ouvrir automatiquement le shop
             shopGUI.open(player, this);
         }
+        
+        // Mettre à jour les scoreboards
+        scoreboardManager.updateAllScoreboards();
         
         broadcast(ChatColor.GREEN + "╔══════════════════════════════╗");
         broadcast(ChatColor.GOLD + "  Shop ouvert ! Achetez vos améliorations");
@@ -569,6 +679,9 @@ public class FocusGameController {
                 // Reset les données
                 pointsManager.resetPlayer(player);
                 shopData.resetPlayer(playerId);
+                
+                // Retirer le scoreboard Focus
+                scoreboardManager.removeScoreboard(player);
                 
                 // Faire exécuter la commande /lobby pour téléporter avec tous les effets (NPC, etc.)
                 player.performCommand("lobby");

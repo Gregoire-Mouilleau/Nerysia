@@ -76,9 +76,13 @@ public class FocusShopGUI implements Listener {
     private static final int[] AXE_COSTS = {1, 2, 3, 4, 5};
     private static final int[] SMOKE_COSTS = {1, 2, 3};
     private static final int[] MOLOTOV_COSTS = {1, 2, 3};
+    private static final int[] MINE_COSTS = {2, 3}; // Niveau 0->1, 1->2
+    private static final int[] REPULSIVE_COSTS = {2, 3}; // Niveau 0->1, 1->2
     
     private static final int MAX_SMOKE_TIER = 3;
     private static final int MAX_MOLOTOV_TIER = 3;
+    private static final int MAX_MINE_TIER = 2;
+    private static final int MAX_REPULSIVE_TIER = 2;
     
     // Coûts d'achat des consommables
     private static final int SMOKE_PURCHASE_COST = 2;
@@ -184,8 +188,8 @@ public class FocusShopGUI implements Listener {
         // Items combinés (achat + upgrade)
         inv.setItem(16, createCombinedConsumableItem(Material.SNOW_BALL, "Grenade Fumigène", ChatColor.GRAY, SMOKE_PURCHASE_COST, shopData.getSmokeTier(playerId), MAX_SMOKE_TIER, SMOKE_COSTS, points));
         inv.setItem(25, createCombinedConsumableItem(Material.FIREBALL, "Cocktail Molotov", ChatColor.GOLD, MOLOTOV_PURCHASE_COST, shopData.getMolotovTier(playerId), MAX_MOLOTOV_TIER, MOLOTOV_COSTS, points));
-        inv.setItem(34, createCombinedConsumableItem(Material.REDSTONE, "Mine", ChatColor.RED, MINE_PURCHASE_COST, 0, 0, new int[]{}, points));
-        inv.setItem(43, createCombinedConsumableItem(Material.FEATHER, "Grenade Propulse", ChatColor.AQUA, REPULSIVE_PURCHASE_COST, 0, 0, new int[]{}, points));
+        inv.setItem(34, createCombinedConsumableItem(Material.REDSTONE, "Mine", ChatColor.RED, MINE_PURCHASE_COST, shopData.getMineTier(playerId), MAX_MINE_TIER, MINE_COSTS, points));
+        inv.setItem(43, createCombinedConsumableItem(Material.FEATHER, "Grenade Propulse", ChatColor.AQUA, REPULSIVE_PURCHASE_COST, shopData.getRepulsiveTier(playerId), MAX_REPULSIVE_TIER, REPULSIVE_COSTS, points));
         
         // Points display (slot 49)
         ItemStack pointsItem = new ItemStack(Material.GOLD_INGOT);
@@ -379,8 +383,13 @@ public class FocusShopGUI implements Listener {
         
         // Clic gauche = acheter
         lore.add(ChatColor.YELLOW + "◀ Clic gauche: " + ChatColor.WHITE + "Acheter");
-        lore.add(ChatColor.GRAY + "Coût: " + ChatColor.GOLD + purchaseCost + " points");
-        lore.add(points >= purchaseCost ? ChatColor.GREEN + "✔ Points suffisants" : ChatColor.RED + "✘ Points insuffisants");
+        if (currentTier == 0) {
+            lore.add(ChatColor.RED + "✘ Nécessite niveau 1+");
+            lore.add(ChatColor.GRAY + "Améliorez d'abord (clic droit)");
+        } else {
+            lore.add(ChatColor.GRAY + "Coût: " + ChatColor.GOLD + purchaseCost + " points");
+            lore.add(points >= purchaseCost ? ChatColor.GREEN + "✔ Points suffisants" : ChatColor.RED + "✘ Points insuffisants");
+        }
         
         lore.add("");
         
@@ -390,8 +399,10 @@ public class FocusShopGUI implements Listener {
             int upgradeCost = upgradeCosts[currentTier];
             lore.add(ChatColor.GRAY + "Coût: " + ChatColor.GOLD + upgradeCost + " points");
             lore.add(points >= upgradeCost ? ChatColor.GREEN + "✔ Points suffisants" : ChatColor.RED + "✘ Points insuffisants");
-        } else {
+        } else if (maxTier > 0) {
             lore.add(ChatColor.GREEN + "✔ Niveau maximum atteint");
+        } else {
+            lore.add(ChatColor.GRAY + "Pas d'amélioration disponible");
         }
         
         meta.setLore(lore);
@@ -425,26 +436,63 @@ public class FocusShopGUI implements Listener {
             case 23: purchaseConsumable(player, Material.GOLDEN_APPLE, ChatColor.GOLD + "Pomme d'Or", 3); break;
             case 16:
                 if (isLeftClick) {
-                    purchaseConsumable(player, Material.SNOW_BALL, ChatColor.GRAY + "Grenade Fumigène", SMOKE_PURCHASE_COST);
+                    int smokeTier = shopData.getSmokeTier(playerId);
+                    if (smokeTier == 0) {
+                        player.sendMessage(ChatColor.RED + "Vous devez améliorer au niveau 1 avant d'acheter !");
+                    } else {
+                        purchaseConsumable(player, Material.SNOW_BALL, ChatColor.GRAY + "Grenade Fumigène", SMOKE_PURCHASE_COST);
+                    }
                 } else if (isRightClick) {
                     upgradeItem(player, "Grenade Fumigène", shopData.getSmokeTier(playerId), MAX_SMOKE_TIER, SMOKE_COSTS, (lvl) -> shopData.setSmokeTier(playerId, lvl));
                 }
                 break;
             case 25:
                 if (isLeftClick) {
-                    purchaseConsumable(player, Material.FIREBALL, ChatColor.GOLD + "Cocktail Molotov", MOLOTOV_PURCHASE_COST);
+                    int molotovTier = shopData.getMolotovTier(playerId);
+                    if (molotovTier == 0) {
+                        player.sendMessage(ChatColor.RED + "Vous devez améliorer au niveau 1 avant d'acheter !");
+                    } else {
+                        purchaseConsumable(player, Material.FIREBALL, ChatColor.GOLD + "Cocktail Molotov", MOLOTOV_PURCHASE_COST);
+                    }
                 } else if (isRightClick) {
                     upgradeItem(player, "Cocktail Molotov", shopData.getMolotovTier(playerId), MAX_MOLOTOV_TIER, MOLOTOV_COSTS, (lvl) -> shopData.setMolotovTier(playerId, lvl));
                 }
                 break;
             case 34:
                 if (isLeftClick) {
-                    purchaseConsumable(player, Material.REDSTONE, ChatColor.RED + "Mine", MINE_PURCHASE_COST);
+                    int mineTier = shopData.getMineTier(playerId);
+                    if (mineTier == 0) {
+                        player.sendMessage(ChatColor.RED + "Vous devez améliorer au niveau 1 avant d'acheter !");
+                    } else {
+                        // Vérifier combien de mines sont déjà achetées (max 1)
+                        int mineCount = countConsumablesByMaterial(playerId, Material.REDSTONE);
+                        if (mineCount >= 1) {
+                            player.sendMessage(ChatColor.RED + "Vous avez déjà acheté le maximum de mines pour ce round (1 max) !");
+                        } else {
+                            purchaseConsumable(player, Material.REDSTONE, ChatColor.RED + "Mine", MINE_PURCHASE_COST);
+                        }
+                    }
+                } else if (isRightClick) {
+                    upgradeItem(player, "Mine", shopData.getMineTier(playerId), MAX_MINE_TIER, MINE_COSTS, (lvl) -> shopData.setMineTier(playerId, lvl));
                 }
                 break;
             case 43:
                 if (isLeftClick) {
-                    purchaseConsumable(player, Material.FEATHER, ChatColor.AQUA + "Grenade Propulse", REPULSIVE_PURCHASE_COST);
+                    int repulsiveTier = shopData.getRepulsiveTier(playerId);
+                    if (repulsiveTier == 0) {
+                        player.sendMessage(ChatColor.RED + "Vous devez améliorer au niveau 1 avant d'acheter !");
+                    } else {
+                        // Limite selon le tier: tier 1 = 1 max, tier 2 = 2 max
+                        int maxAllowed = repulsiveTier;
+                        int repulsiveCount = countConsumablesByMaterial(playerId, Material.FEATHER);
+                        if (repulsiveCount >= maxAllowed) {
+                            player.sendMessage(ChatColor.RED + "Vous avez déjà acheté le maximum de grenades propulses pour ce round (" + maxAllowed + " max) !");
+                        } else {
+                            purchaseConsumable(player, Material.FEATHER, ChatColor.AQUA + "Grenade Propulse", REPULSIVE_PURCHASE_COST);
+                        }
+                    }
+                } else if (isRightClick) {
+                    upgradeItem(player, "Grenade Propulse", shopData.getRepulsiveTier(playerId), MAX_REPULSIVE_TIER, REPULSIVE_COSTS, (lvl) -> shopData.setRepulsiveTier(playerId, lvl));
                 }
                 break;
             case 53:
@@ -479,6 +527,12 @@ public class FocusShopGUI implements Listener {
         pointsManager.removePoints(player, cost);
         setter.setLevel(currentLevel + 1);
         player.sendMessage(ChatColor.GREEN + name + " amélioré(e) !");
+        
+        // Mettre à jour le scoreboard
+        if (currentController != null) {
+            currentController.updatePlayerScoreboard(player);
+        }
+        
         open(player, currentController);
     }
     
@@ -519,6 +573,11 @@ public class FocusShopGUI implements Listener {
             player.sendMessage(ChatColor.GREEN + "Hache améliorée !");
         }
         
+        // Mettre à jour le scoreboard
+        if (currentController != null) {
+            currentController.updatePlayerScoreboard(player);
+        }
+        
         open(player, currentController);
     }
     
@@ -534,7 +593,27 @@ public class FocusShopGUI implements Listener {
         shopData.addConsumableItem(player.getUniqueId(), material, name);
         player.sendMessage(ChatColor.GREEN + "Acheté: " + name);
         player.sendMessage(ChatColor.GRAY + "L'item sera disponible au prochain round !");
+        
+        // Mettre à jour le scoreboard
+        if (currentController != null) {
+            currentController.updatePlayerScoreboard(player);
+        }
+        
         open(player, currentController);
+    }
+    
+    /**
+     * Compte le nombre d'items consommables d'un type spécifique
+     */
+    private int countConsumablesByMaterial(UUID playerId, Material material) {
+        List<FocusShopData.ConsumableItem> consumables = shopData.getConsumableItems(playerId);
+        int count = 0;
+        for (FocusShopData.ConsumableItem item : consumables) {
+            if (item.material == material) {
+                count++;
+            }
+        }
+        return count;
     }
     
     /**

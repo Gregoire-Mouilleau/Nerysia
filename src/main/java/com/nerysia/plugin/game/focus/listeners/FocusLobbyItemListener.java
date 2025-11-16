@@ -114,15 +114,12 @@ public class FocusLobbyItemListener implements Listener {
                 p.sendMessage("§7Joueurs: §e" + game.getPlayerCount());
                 p.sendMessage("§7Mode: §eBattle Royale par Rounds");
                 p.sendMessage("§a§l========================================");
-                
-                // Nettoyer l'inventaire
-                p.getInventory().clear();
             }
         }
         
-        // Lancer le premier round (les maps sont déjà dupliquées lors de la création)
+        // Lancer la phase de préparation
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            controller.startRound();
+            controller.startPreparation();
         }, 40L); // 2 secondes
     }
 }

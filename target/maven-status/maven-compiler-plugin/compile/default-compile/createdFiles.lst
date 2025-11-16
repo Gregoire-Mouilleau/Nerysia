@@ -29,6 +29,7 @@ com\nerysia\plugin\game\focus\FocusShopGUI.class
 com\nerysia\plugin\game\gui\GameMenuGUI.class
 com\nerysia\plugin\game\focus\commands\FocusReadyCommand.class
 com\nerysia\plugin\game\GameState.class
+com\nerysia\plugin\game\focus\FocusScoreboardManager$1.class
 com\nerysia\plugin\game\npc\NPCManager.class
 com\nerysia\plugin\game\gui\GameCreationGUI.class
 com\nerysia\plugin\game\npc\NPCRotationTask.class
@@ -67,6 +68,7 @@ com\nerysia\plugin\lobby\handlers\LobbyJoinHandler$1.class
 com\nerysia\plugin\minigames\listeners\MinigamesLobbyProtectionListener.class
 com\nerysia\plugin\game\focus\listeners\FocusItemsListener$3.class
 com\nerysia\plugin\game\npc\NPCCollisionPreventer.class
+com\nerysia\plugin\game\focus\FocusScoreboardManager.class
 com\nerysia\plugin\game\npc\NPCProtectionListener.class
 com\nerysia\plugin\game\focus\gui\FocusSettingsGUI.class
 com\nerysia\plugin\game\focus\FocusMapManager$2.class

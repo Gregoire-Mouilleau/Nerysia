@@ -1,6 +1,9 @@
 package com.nerysia.plugin.lobby.commands;
 
 import com.nerysia.plugin.Nerysia;
+import com.nerysia.plugin.game.focus.FocusGame;
+import com.nerysia.plugin.game.focus.FocusGameController;
+import com.nerysia.plugin.game.focus.FocusGameManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,6 +32,40 @@ public class LobbyCommand implements CommandExecutor {
         }
 
         Player player = (Player) sender;
+        
+        // Vérifier si le joueur est dans une partie Focus en cours
+        FocusGameManager gameManager = plugin.getFocusGameManager();
+        if (gameManager != null) {
+            FocusGame game = gameManager.getPlayerGame(player.getUniqueId());
+            if (game != null) {
+                FocusGameController controller = gameManager.getGameController(game);
+                
+                // Si en jeu, retirer le joueur et vérifier si le round doit se terminer
+                if (controller != null && controller.getState() == FocusGameController.State.INGAME) {
+                    Bukkit.getLogger().info("[Focus] " + player.getName() + " a quitté la partie via /lobby pendant INGAME");
+                    
+                    // Message aux autres joueurs
+                    String message = "§c[Focus] §e" + player.getName() + " §7a quitté la partie !";
+                    for (java.util.UUID playerId : game.getPlayers()) {
+                        Player p = Bukkit.getPlayer(playerId);
+                        if (p != null && !p.equals(player)) {
+                            p.sendMessage(message);
+                        }
+                    }
+                    
+                    // Retirer le joueur de la partie
+                    gameManager.removePlayerFromGame(player.getUniqueId());
+                    
+                    // Vérifier si le round doit se terminer (après un petit délai)
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        controller.checkRoundEnd();
+                    }, 5L);
+                } else {
+                    // Si pas en jeu, juste retirer le joueur normalement
+                    gameManager.removePlayerFromGame(player.getUniqueId());
+                }
+            }
+        }
 
         // Clear l'inventaire du joueur
         player.getInventory().clear();

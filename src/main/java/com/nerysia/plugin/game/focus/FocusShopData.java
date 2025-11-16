@@ -24,6 +24,8 @@ public class FocusShopData {
     private final Map<UUID, String> axeElements; // "fire", "ice", "lightning"
     private final Map<UUID, Integer> smokeTiers;
     private final Map<UUID, Integer> molotovTiers;
+    private final Map<UUID, Integer> mineTiers;
+    private final Map<UUID, Integer> repulsiveTiers;
     
     // Items consommables stockés par joueur
     private final Map<UUID, List<ConsumableItem>> consumableItems;
@@ -50,6 +52,8 @@ public class FocusShopData {
         this.axeElements = new HashMap<>();
         this.smokeTiers = new HashMap<>();
         this.molotovTiers = new HashMap<>();
+        this.mineTiers = new HashMap<>();
+        this.repulsiveTiers = new HashMap<>();
         this.consumableItems = new HashMap<>();
     }
     
@@ -161,6 +165,26 @@ public class FocusShopData {
         molotovTiers.put(playerId, tier);
     }
     
+    // ========== MINE ==========
+    
+    public int getMineTier(UUID playerId) {
+        return mineTiers.getOrDefault(playerId, 0);
+    }
+    
+    public void setMineTier(UUID playerId, int tier) {
+        mineTiers.put(playerId, tier);
+    }
+    
+    // ========== REPULSIVE ==========
+    
+    public int getRepulsiveTier(UUID playerId) {
+        return repulsiveTiers.getOrDefault(playerId, 0);
+    }
+    
+    public void setRepulsiveTier(UUID playerId, int tier) {
+        repulsiveTiers.put(playerId, tier);
+    }
+    
     // ========== CONSUMABLE ITEMS ==========
     
     public void addConsumableItem(UUID playerId, Material material, String name) {
@@ -189,6 +213,8 @@ public class FocusShopData {
         axeElements.remove(playerId);
         smokeTiers.put(playerId, 0);
         molotovTiers.put(playerId, 0);
+        mineTiers.put(playerId, 0);
+        repulsiveTiers.put(playerId, 0);
         consumableItems.remove(playerId);
     }
     
@@ -204,6 +230,8 @@ public class FocusShopData {
         axeElements.clear();
         smokeTiers.clear();
         molotovTiers.clear();
+        mineTiers.clear();
+        repulsiveTiers.clear();
         consumableItems.clear();
     }
 }
