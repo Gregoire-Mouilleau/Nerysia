@@ -36,7 +36,7 @@ public class FocusPlayerQuitListener implements Listener {
                     if (!playerId.equals(player.getUniqueId())) {
                         Player p = Bukkit.getPlayer(playerId);
                         if (p != null) {
-                            p.sendMessage("§c[Focus] §7L'hôte a quitté, la partie a été supprimée !");
+                            p.sendMessage("§c❌ L'hôte a quitté, partie supprimée");
                             teleportToLobby(p);
                         }
                     }
@@ -50,7 +50,7 @@ public class FocusPlayerQuitListener implements Listener {
                 gameManager.removePlayerFromGame(player.getUniqueId());
                 
                 // Message unique à tous les joueurs restants
-                String message = "§c[Focus] §e" + player.getName() + " §7a quitté la partie ! §8(§c" + game.getPlayerCount() + "§8/§e" + game.getSettings().getMaxPlayers() + "§8)";
+                String message = "§e➡ " + player.getName() + " §7a quitté " + "§8(" + game.getPlayerCount() + "§8/" + game.getSettings().getMaxPlayers() + "§8)";
                 for (java.util.UUID playerId : game.getPlayers()) {
                     Player p = Bukkit.getPlayer(playerId);
                     if (p != null) {

@@ -45,7 +45,7 @@ public class LobbyCommand implements CommandExecutor {
                     Bukkit.getLogger().info("[Focus] " + player.getName() + " a quitté la partie via /lobby pendant INGAME");
                     
                     // Message aux autres joueurs
-                    String message = "§c[Focus] §e" + player.getName() + " §7a quitté la partie !";
+                    String message = "§e➡ " + player.getName() + " §7a quitté";
                     for (java.util.UUID playerId : game.getPlayers()) {
                         Player p = Bukkit.getPlayer(playerId);
                         if (p != null && !p.equals(player)) {
@@ -110,7 +110,7 @@ public class LobbyCommand implements CommandExecutor {
             spawnLocation.setYaw(-90f);
             spawnLocation.setPitch(0f);
             player.teleport(spawnLocation);
-            player.sendMessage("§aTéléportation au lobby...");
+            player.sendMessage("§a✔ Téléportation au lobby");
             
             // Respawner les NPCs pour le joueur après un court délai
             Bukkit.getScheduler().runTaskLater(plugin, () -> {

@@ -28,10 +28,12 @@ import java.util.UUID;
 public class FocusGameplayListener implements Listener {
     
     private final FocusGameManager gameManager;
+    private final FocusItemsListener itemsListener;
     private static final Set<UUID> deadPlayersThisRound = new HashSet<>();
     
-    public FocusGameplayListener(FocusGameManager gameManager) {
+    public FocusGameplayListener(FocusGameManager gameManager, FocusItemsListener itemsListener) {
         this.gameManager = gameManager;
+        this.itemsListener = itemsListener;
     }
     
     /**
@@ -54,6 +56,15 @@ public class FocusGameplayListener implements Listener {
         FocusGameController controller = gameManager.getGameController(game);
         if (controller == null) return;
         
+        // Vérifier si le joueur a été tué par une mine
+        if (killer == null && itemsListener != null) {
+            UUID mineKillerUUID = itemsListener.getMineKiller(victim.getUniqueId());
+            if (mineKillerUUID != null) {
+                killer = Bukkit.getPlayer(mineKillerUUID);
+                Bukkit.getLogger().info("[Focus] Mort par mine - Poseur: " + (killer != null ? killer.getName() : "null"));
+            }
+        }
+        
         // Marquer le joueur comme mort ce round
         deadPlayersThisRound.add(victim.getUniqueId());
         
@@ -61,10 +72,9 @@ public class FocusGameplayListener implements Listener {
         
         // Message de mort personnalisé
         if (killer != null && killer != victim) {
-            String deathMessage = ChatColor.DARK_RED + "☠ " + ChatColor.RED + victim.getName() + 
-                                 ChatColor.GRAY + " a été tué par " + 
-                                 ChatColor.GOLD + killer.getName() + 
-                                 ChatColor.DARK_RED + " ☠";
+            String deathMessage = ChatColor.RED + "💀 " + ChatColor.GRAY + victim.getName() + 
+                                 ChatColor.DARK_GRAY + " ➜ " + 
+                                 ChatColor.GOLD + killer.getName();
             // Broadcast à tous les joueurs de la partie
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (gameManager.getPlayerGame(player.getUniqueId()) == game) {

@@ -120,6 +120,57 @@ public class FocusSettingsGUI implements Listener {
             inventory.setItem(24, roundsItem);
         }
         
+        // Points par kill (slot 29)
+        ItemStack killPoints = new ItemStack(Material.GOLD_NUGGET, Math.max(1, settings.getPointsPerKill()));
+        ItemMeta killPointsMeta = killPoints.getItemMeta();
+        killPointsMeta.setDisplayName("§6§lPoints par Kill");
+        List<String> killPointsLore = new ArrayList<>();
+        killPointsLore.add("§7Actuel: §e" + settings.getPointsPerKill() + " points");
+        killPointsLore.add("");
+        killPointsLore.add("§7Points gagnés à chaque kill");
+        killPointsLore.add("");
+        killPointsLore.add("§e➤ Clic gauche: §a+1");
+        killPointsLore.add("§e➤ Clic droit: §c-1");
+        killPointsMeta.setLore(killPointsLore);
+        killPoints.setItemMeta(killPointsMeta);
+        inventory.setItem(29, killPoints);
+        
+        // Points 1ère place (slot 33)
+        ItemStack firstPlace = new ItemStack(Material.GOLD_INGOT, Math.max(1, settings.getFirstPlacePoints()));
+        ItemMeta firstPlaceMeta = firstPlace.getItemMeta();
+        firstPlaceMeta.setDisplayName("§e§lPoints 1ère Place");
+        List<String> firstPlaceLore = new ArrayList<>();
+        firstPlaceLore.add("§7Actuel: §e" + settings.getFirstPlacePoints() + " points");
+        firstPlaceLore.add("");
+        firstPlaceLore.add("§7Distribution automatique:");
+        firstPlaceLore.add("§a 1er: §e" + settings.getPointsForPlacement(1) + " pts");
+        firstPlaceLore.add("§7 2ème: §e" + settings.getPointsForPlacement(2) + " pts");
+        firstPlaceLore.add("§7 3ème: §e" + settings.getPointsForPlacement(3) + " pts");
+        firstPlaceLore.add("§7 4ème: §e" + settings.getPointsForPlacement(4) + " pts");
+        firstPlaceLore.add("§7 5ème: §e" + settings.getPointsForPlacement(5) + " pts");
+        firstPlaceLore.add("§7 6ème: §e" + settings.getPointsForPlacement(6) + " pts");
+        firstPlaceLore.add("§7 7ème+: §e" + settings.getPointsForPlacement(7) + " pts");
+        firstPlaceLore.add("");
+        firstPlaceLore.add("§e➤ Clic gauche: §a+1");
+        firstPlaceLore.add("§e➤ Clic droit: §c-1");
+        firstPlaceMeta.setLore(firstPlaceLore);
+        firstPlace.setItemMeta(firstPlaceMeta);
+        inventory.setItem(33, firstPlace);
+        
+        // Bouton reset (slot 40)
+        ItemStack reset = new ItemStack(Material.BARRIER);
+        ItemMeta resetMeta = reset.getItemMeta();
+        resetMeta.setDisplayName("§c§lRéinitialiser les paramètres");
+        List<String> resetLore = new ArrayList<>();
+        resetLore.add("");
+        resetLore.add("§7Remet tous les paramètres");
+        resetLore.add("§7à leurs valeurs par défaut");
+        resetLore.add("");
+        resetLore.add("§e➤ Cliquez pour réinitialiser");
+        resetMeta.setLore(resetLore);
+        reset.setItemMeta(resetMeta);
+        inventory.setItem(40, reset);
+        
         // Bouton retour (slot 49)
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta backMeta = back.getItemMeta();
@@ -225,6 +276,34 @@ public class FocusSettingsGUI implements Listener {
                     }
                 }
                 player.sendMessage("§a[Focus] §7Rounds pour gagner: §e" + settings.getRoundsToWin());
+                needUpdate = true;
+                break;
+                
+            case 29: // Points par kill
+                int currentKillPoints = settings.getPointsPerKill();
+                if (event.isLeftClick()) {
+                    settings.setPointsPerKill(currentKillPoints + 1);
+                } else if (event.isRightClick()) {
+                    settings.setPointsPerKill(currentKillPoints - 1);
+                }
+                player.sendMessage("§a[Focus] §7Points par kill: §e" + settings.getPointsPerKill());
+                needUpdate = true;
+                break;
+                
+            case 33: // Points 1ère place
+                int currentFirstPlace = settings.getFirstPlacePoints();
+                if (event.isLeftClick()) {
+                    settings.setFirstPlacePoints(currentFirstPlace + 1);
+                } else if (event.isRightClick()) {
+                    settings.setFirstPlacePoints(currentFirstPlace - 1);
+                }
+                player.sendMessage("§a[Focus] §7Points 1ère place: §e" + settings.getFirstPlacePoints());
+                needUpdate = true;
+                break;
+                
+            case 40: // Reset
+                settings.resetToDefaults();
+                player.sendMessage("§a[Focus] §7Paramètres réinitialisés aux valeurs par défaut !");
                 needUpdate = true;
                 break;
                 

@@ -39,22 +39,22 @@ public class FocusShopGUI implements Listener {
     
     private static final Material[] HELMET_PROGRESSION = {
         Material.LEATHER_HELMET, Material.CHAINMAIL_HELMET, Material.GOLD_HELMET,
-        Material.IRON_HELMET
+        Material.IRON_HELMET, Material.DIAMOND_HELMET
     };
     
     private static final Material[] CHESTPLATE_PROGRESSION = {
         Material.LEATHER_CHESTPLATE, Material.CHAINMAIL_CHESTPLATE, Material.GOLD_CHESTPLATE,
-        Material.IRON_CHESTPLATE
+        Material.IRON_CHESTPLATE, Material.DIAMOND_CHESTPLATE
     };
     
     private static final Material[] LEGGINGS_PROGRESSION = {
         Material.LEATHER_LEGGINGS, Material.CHAINMAIL_LEGGINGS, Material.GOLD_LEGGINGS,
-        Material.IRON_LEGGINGS
+        Material.IRON_LEGGINGS, Material.DIAMOND_LEGGINGS
     };
     
     private static final Material[] BOOTS_PROGRESSION = {
         Material.LEATHER_BOOTS, Material.CHAINMAIL_BOOTS, Material.GOLD_BOOTS,
-        Material.IRON_BOOTS
+        Material.IRON_BOOTS, Material.DIAMOND_BOOTS
     };
     
     private static final Material[] AXE_PROGRESSION = {
@@ -66,29 +66,31 @@ public class FocusShopGUI implements Listener {
     private static final int MAX_ARROW_TIER = 3;
     
     // Coûts des upgrades (index = niveau actuel)
-    private static final int[] SWORD_COSTS = {1, 2, 4, 5, 8};
-    private static final int[] HELMET_COSTS = {1, 2, 3, 4};
-    private static final int[] CHESTPLATE_COSTS = {1, 2, 3, 4};
-    private static final int[] LEGGINGS_COSTS = {1, 2, 3, 4};
-    private static final int[] BOOTS_COSTS = {1, 2, 3, 4};
-    private static final int[] BOW_COSTS = {1, 2, 3, 4, 5, 6};
-    private static final int[] ARROW_COSTS = {1, 2, 3};
-    private static final int[] AXE_COSTS = {1, 2, 3, 4, 5};
-    private static final int[] SMOKE_COSTS = {1, 2, 3};
-    private static final int[] MOLOTOV_COSTS = {1, 2, 3};
-    private static final int[] MINE_COSTS = {2, 3}; // Niveau 0->1, 1->2
-    private static final int[] REPULSIVE_COSTS = {2, 3}; // Niveau 0->1, 1->2
+    private static final int[] SWORD_COSTS = {1, 2, 4, 5, 8}; // Bâton→Bois, Bois→Pierre, Pierre→Or, Or→Fer, Fer→Diamant
+    private static final int[] HELMET_COSTS = {1, 1, 2, 3, 4}; // Achat initial, Cuir→Maille, Maille→Or, Or→Fer, Fer→Diamant
+    private static final int[] CHESTPLATE_COSTS = {1, 1, 2, 3, 4, 5}; // Achat+upgrades 0→1→2→3→4→5
+    private static final int[] LEGGINGS_COSTS = {1, 1, 2, 3, 4, 5}; // Achat+upgrades 0→1→2→3→4→5
+    private static final int[] BOOTS_COSTS = {1, 1, 2, 3, 4, 5}; // Achat+upgrades 0→1→2→3→4→5
+    private static final int[] BOW_COSTS = {1, 2, 3, 4, 5}; // Achat initial + 4 upgrades
+    private static final int[] ARROW_COSTS = {1, 2, 3}; // 16→32→64→128 flèches
+    private static final int[] AXE_COSTS = {1, 2, 3, 4, 5}; // Bois, Bois→Pierre, Pierre→Or, Or→Fer, Fer→Diamant
+    private static final int[] SMOKE_COSTS = {1, 2}; // Niveau 0→1, 1→2 (max tier 2)
+    private static final int[] MOLOTOV_COSTS = {1, 2}; // Niveau 0→1, 1→2 (max tier 2)
+    private static final int[] MINE_COSTS = {1, 2, 3, 4}; // Déblocage initial, puis 0→1, 1→2, 2→3 (max tier 3)
+    private static final int[] REPULSIVE_COSTS = {1, 2, 3}; // Déblocage initial, puis 0→1, 1→2 (max tier 2)
     
-    private static final int MAX_SMOKE_TIER = 3;
-    private static final int MAX_MOLOTOV_TIER = 3;
-    private static final int MAX_MINE_TIER = 2;
+    private static final int MAX_SMOKE_TIER = 2;
+    private static final int MAX_MOLOTOV_TIER = 2;
+    private static final int MAX_MINE_TIER = 3;
     private static final int MAX_REPULSIVE_TIER = 2;
     
     // Coûts d'achat des consommables
-    private static final int SMOKE_PURCHASE_COST = 2;
-    private static final int MOLOTOV_PURCHASE_COST = 3;
-    private static final int MINE_PURCHASE_COST = 4;
-    private static final int REPULSIVE_PURCHASE_COST = 5;
+    private static final int SMOKE_PURCHASE_COST = 1;
+    private static final int MOLOTOV_PURCHASE_COST = 1;
+    private static final int MINE_PURCHASE_COST = 1;
+    private static final int REPULSIVE_PURCHASE_COST = 1;
+    private static final int GOLDEN_APPLE_COST = 1;
+    private static final int ENDER_PEARL_COST = 1;
     
     private final FocusShopData shopData;
     private final FocusPointsManager pointsManager;
@@ -180,10 +182,10 @@ public class FocusShopGUI implements Listener {
         inv.setItem(21, createAxeUpgradeItem(shopData.getAxeLevel(playerId), shopData.getAxeElement(playerId), points));
         
         // Ender Pearl (slot 32)
-        inv.setItem(32, createConsumableItem(Material.ENDER_PEARL, ChatColor.DARK_PURPLE + "Ender Pearl", 2, points));
+        inv.setItem(32, createConsumableItem(Material.ENDER_PEARL, ChatColor.DARK_PURPLE + "Ender Pearl", ENDER_PEARL_COST, points));
         
         // Pomme d'or (slot 23)
-        inv.setItem(23, createConsumableItem(Material.GOLDEN_APPLE, ChatColor.GOLD + "Pomme d'Or", 3, points));
+        inv.setItem(23, createConsumableItem(Material.GOLDEN_APPLE, ChatColor.GOLD + "Pomme d'Or", GOLDEN_APPLE_COST, points));
         
         // Items combinés (achat + upgrade)
         inv.setItem(16, createCombinedConsumableItem(Material.SNOW_BALL, "Grenade Fumigène", ChatColor.GRAY, SMOKE_PURCHASE_COST, shopData.getSmokeTier(playerId), MAX_SMOKE_TIER, SMOKE_COSTS, points));
@@ -432,8 +434,8 @@ public class FocusShopGUI implements Listener {
             case 30: upgradeItem(player, "Arc", shopData.getBowLevel(playerId), MAX_BOW_TIER, BOW_COSTS, (lvl) -> shopData.setBowLevel(playerId, lvl)); break;
             case 39: upgradeItem(player, "Flèches", shopData.getArrowLevel(playerId), MAX_ARROW_TIER, ARROW_COSTS, (lvl) -> shopData.setArrowLevel(playerId, lvl)); break;
             case 21: upgradeAxe(player); break;
-            case 32: purchaseConsumable(player, Material.ENDER_PEARL, ChatColor.DARK_PURPLE + "Ender Pearl", 2); break;
-            case 23: purchaseConsumable(player, Material.GOLDEN_APPLE, ChatColor.GOLD + "Pomme d'Or", 3); break;
+            case 32: purchaseConsumable(player, Material.ENDER_PEARL, ChatColor.DARK_PURPLE + "Ender Pearl", ENDER_PEARL_COST); break;
+            case 23: purchaseConsumable(player, Material.GOLDEN_APPLE, ChatColor.GOLD + "Pomme d'Or", GOLDEN_APPLE_COST); break;
             case 16:
                 if (isLeftClick) {
                     int smokeTier = shopData.getSmokeTier(playerId);

@@ -238,14 +238,11 @@ public class FocusGameListGUI implements Listener {
         // Créer la partie
         FocusGame game = gameManager.createGame(player);
         
-        player.sendMessage("§a[Focus] §7Partie créée avec succès !");
-        player.sendMessage("§e[Focus] §7Préparation des maps...");
-        
         // Initialiser la partie (dupliquer les maps) de manière asynchrone
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             FocusGameController controller = gameManager.getGameController(game);
             if (controller == null) {
-                player.sendMessage("§c[Focus] §7Erreur lors de l'initialisation !");
+                player.sendMessage("§cErreur lors de l'initialisation !");
                 return;
             }
             
@@ -254,7 +251,7 @@ public class FocusGameListGUI implements Listener {
                 boolean success = controller.initializeGame();
                 
                 if (!success) {
-                    player.sendMessage("§c[Focus] §7Erreur lors de la création des maps !");
+                    player.sendMessage("§cErreur lors de la création des maps !");
                     gameManager.deleteGame(game.getGameId());
                     return;
                 }
@@ -263,7 +260,7 @@ public class FocusGameListGUI implements Listener {
                 org.bukkit.Location spawnLoc = controller.getSpawnLocation();
                 if (spawnLoc != null) {
                     player.teleport(spawnLoc);
-                    player.sendMessage("§a[Focus] §7Vous avez été téléporté au lobby !");
+                    player.sendMessage("§aVous avez été téléporté au lobby !");
                     
                     // Donner les items de l'hôte
                     giveHostItems(player);

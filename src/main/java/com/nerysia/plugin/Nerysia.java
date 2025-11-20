@@ -118,8 +118,6 @@ public class Nerysia extends JavaPlugin {
         getServer().getPluginManager().registerEvents(focusShopGUI, this);
         getServer().getPluginManager().registerEvents(new FocusLobbyItemListener(this, focusGameManager, focusSettingsGUI, focusPlayerManagementGUI), this);
         getServer().getPluginManager().registerEvents(new FocusPlayerQuitListener(this, focusGameManager), this);
-        getServer().getPluginManager().registerEvents(new FocusGameplayListener(focusGameManager), this);
-        getServer().getPluginManager().registerEvents(new com.nerysia.plugin.game.focus.listeners.FocusShopItemListener(focusGameManager, focusShopGUI), this);
         
         // Enregistrer le listener des items et le stocker dans le manager
         com.nerysia.plugin.game.focus.listeners.FocusItemsListener itemsListener = 
@@ -127,7 +125,11 @@ public class Nerysia extends JavaPlugin {
         getServer().getPluginManager().registerEvents(itemsListener, this);
         FocusGameManager.setItemsListener(itemsListener);
         
-        getServer().getPluginManager().registerEvents(new com.nerysia.plugin.game.focus.listeners.FocusWorldProtectionListener(), this);
+        // Enregistrer le gameplay listener avec la référence au items listener pour les kills de mines
+        getServer().getPluginManager().registerEvents(new FocusGameplayListener(focusGameManager, itemsListener), this);
+        getServer().getPluginManager().registerEvents(new com.nerysia.plugin.game.focus.listeners.FocusShopItemListener(focusGameManager, focusShopGUI), this);
+        
+        getServer().getPluginManager().registerEvents(new com.nerysia.plugin.game.focus.listeners.FocusWorldProtectionListener(focusGameManager), this);
         getServer().getPluginManager().registerEvents(new com.nerysia.plugin.game.focus.listeners.FocusLobbyLeaveListener(this, focusGameManager, focusSettingsGUI), this);
         
         // Démarrer la tâche de scoreboard

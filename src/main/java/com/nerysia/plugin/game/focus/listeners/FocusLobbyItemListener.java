@@ -108,12 +108,12 @@ public class FocusLobbyItemListener implements Listener {
         for (java.util.UUID playerId : game.getPlayers()) {
             Player p = Bukkit.getPlayer(playerId);
             if (p != null) {
-                p.sendMessage("§a§l========================================");
-                p.sendMessage("§e§l          PARTIE FOCUS LANCÉE");
-                p.sendMessage("§a§l========================================");
+                p.sendMessage("");
+                p.sendMessage("§6⚔ Partie Focus lancée");
+                p.sendMessage("");
                 p.sendMessage("§7Joueurs: §e" + game.getPlayerCount());
                 p.sendMessage("§7Mode: §eBattle Royale par Rounds");
-                p.sendMessage("§a§l========================================");
+                p.sendMessage("");
             }
         }
         

@@ -46,6 +46,9 @@ public class FocusGameController {
     // Tracking des conditions de victoire
     private final Map<UUID, Long> victoryTimestamp; // Timestamp quand le joueur remplit les conditions
     
+    // Tracking du classement du round (ordre de mort)
+    private final List<UUID> roundDeathOrder; // Ordre de mort (le premier mort est en position 0)
+    
     public FocusGameController(FocusGame game, FocusPointsManager pointsManager, FocusShopData shopData, FocusShopGUI shopGUI, FocusGameManager gameManager) {
         this.game = game;
         this.pointsManager = pointsManager;
@@ -58,6 +61,7 @@ public class FocusGameController {
         this.readyPlayers = new HashSet<>();
         this.alivePlayers = new HashMap<>();
         this.victoryTimestamp = new HashMap<>();
+        this.roundDeathOrder = new ArrayList<>();
         this.gameWorld = null;
         this.spawnWorld = null;
         
@@ -129,19 +133,19 @@ public class FocusGameController {
      * @return true si succès, false si erreur
      */
     public boolean initializeGame() {
-        broadcast(ChatColor.GOLD + "Préparation des maps Focus...");
+        broadcast(ChatColor.GOLD + "⏳ Chargement de la map...");
         
         // Dupliquer le spawn_minijeux
         spawnWorld = mapManager.duplicateSpawnMinijeux(game.getGameId());
         if (spawnWorld == null) {
-            broadcast(ChatColor.RED + "Erreur lors de la création du spawn !");
+            broadcast(ChatColor.RED + "✘ Erreur lors du chargement !");
             return false;
         }
         
         // Dupliquer la map de jeu
         gameWorld = mapManager.duplicateMap(game.getGameId());
         if (gameWorld == null) {
-            broadcast(ChatColor.RED + "Erreur lors de la création de la map !");
+            broadcast(ChatColor.RED + "✘ Erreur lors du chargement !");
             // Nettoyer le spawn créé
             if (spawnWorld != null) {
                 mapManager.deleteWorld(spawnWorld.getName());
@@ -150,7 +154,7 @@ public class FocusGameController {
             return false;
         }
         
-        broadcast(ChatColor.GREEN + "Maps Focus chargées avec succès !");
+        broadcast(ChatColor.GREEN + "✔ Map chargée avec succès !");
         return true;
     }
     
@@ -236,18 +240,19 @@ public class FocusGameController {
             shopGUI.open(player, this);
         }
         
-        broadcast(ChatColor.GREEN + "╬══════════════════════════════╬");
-        broadcast(ChatColor.GOLD + "  Phase de préparation");
-        broadcast(ChatColor.YELLOW + "  Vous avez reçu " + STARTING_POINTS + " points de départ !");
-        broadcast(ChatColor.YELLOW + "  Achetez votre équipement puis tapez /ready");
-        broadcast(ChatColor.GREEN + "╰══════════════════════════════╯");
+        broadcast("");
+        broadcast(ChatColor.GOLD + "✦ Phase de préparation ✦");
+        broadcast("");
+        broadcast(ChatColor.YELLOW + "⚡ +" + STARTING_POINTS + " points de départ");
+        broadcast(ChatColor.GRAY + "Équipez-vous puis tapez " + ChatColor.WHITE + "/ready");
+        broadcast("");
     }
     
     private void startCountdown() {
-        broadcast(ChatColor.GREEN + "╔══════════════════════════════╗");
-        broadcast(ChatColor.GOLD + "  Tous les joueurs sont prêts !");
-        broadcast(ChatColor.YELLOW + "  Lancement du round dans 3s...");
-        broadcast(ChatColor.GREEN + "╚══════════════════════════════╝");
+        broadcast("");
+        broadcast(ChatColor.GREEN + "✔ Tous les joueurs sont prêts !");
+        broadcast(ChatColor.YELLOW + "⏱ Lancement dans 3 secondes...");
+        broadcast("");
         
         Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
             startRound();
@@ -265,6 +270,9 @@ public class FocusGameController {
         
         // Réinitialiser les mines
         FocusGameManager.clearMines();
+        
+        // Réinitialiser l'ordre de mort du round
+        roundDeathOrder.clear();
         
         // Marquer tous les joueurs comme vivants
         for (UUID playerId : game.getPlayers()) {
@@ -311,8 +319,10 @@ public class FocusGameController {
             shopGUI.givePlayerEquipment(player, true);
         }
         
-        broadcast(ChatColor.GOLD + "========== ROUND COMMENCE ==========");
-        broadcast(ChatColor.YELLOW + "Dernier joueur en vie remporte le round !");
+        broadcast("");
+        broadcast(ChatColor.GOLD + "⚔ Le round commence !");
+        broadcast(ChatColor.GRAY + "Soyez le dernier en vie");
+        broadcast("");
         
         // Mettre à jour les scoreboards
         scoreboardManager.updateAllScoreboards();
@@ -353,11 +363,15 @@ public class FocusGameController {
         alivePlayers.put(victim.getUniqueId(), false);
         Bukkit.getLogger().info("[Focus] " + victim.getName() + " marqué comme mort");
         
-        // Donner des points au tueur
+        // Enregistrer l'ordre de mort (le premier mort sera en position 0)
+        roundDeathOrder.add(victim.getUniqueId());
+        
+        // Donner des points au tueur (points configurables)
         if (killer != null && killer != victim) {
+            int killPoints = game.getSettings().getPointsPerKill();
             pointsManager.registerKill(killer);
-            pointsManager.addPoints(killer, 2); // 2 points par kill
-            killer.sendMessage(ChatColor.GREEN + "+2 points pour le kill !");
+            pointsManager.addPoints(killer, killPoints);
+            killer.sendMessage(ChatColor.GREEN + "⚡ " + ChatColor.GOLD + "+" + killPoints + " points");
             
             // Mettre à jour le scoreboard du tueur
             scoreboardManager.updateOrCreateScoreboard(killer);
@@ -393,25 +407,17 @@ public class FocusGameController {
         
         if (winner != null) {
             pointsManager.incrementRoundsWon(winner);
-            broadcast(ChatColor.GOLD + "========== FIN DU ROUND ==========");
-            broadcast(ChatColor.YELLOW + winner.getName() + ChatColor.GREEN + " remporte le round !");
+            broadcast("");
+            broadcast(ChatColor.YELLOW + "🏆 Fin du round");
+            broadcast("");
+            broadcast(ChatColor.GREEN + "✦ " + winner.getName() + ChatColor.GREEN + " remporte le round !");
+            broadcast("");
             
-            // Points bonus pour le top 3
-            List<Player> ranking = getPlayersByKills();
-            if (ranking.size() >= 1) {
-                pointsManager.addPoints(ranking.get(0), 8);
-                ranking.get(0).sendMessage(ChatColor.GOLD + "+8 points (1er en kills)");
-            }
-            if (ranking.size() >= 2) {
-                pointsManager.addPoints(ranking.get(1), 6);
-                ranking.get(1).sendMessage(ChatColor.YELLOW + "+6 points (2ème en kills)");
-            }
-            if (ranking.size() >= 3) {
-                pointsManager.addPoints(ranking.get(2), 5);
-                ranking.get(2).sendMessage(ChatColor.GRAY + "+5 points (3ème en kills)");
-            }
+            // Distribuer les points selon le classement (ordre de survie)
+            distributeRankingPoints(winner);
+            broadcast("");
         } else {
-            broadcast(ChatColor.RED + "Aucun gagnant pour ce round !");
+            broadcast(ChatColor.RED + "✘ Aucun gagnant pour ce round");
         }
         
         // Mettre à jour les scoreboards après l'attribution des points
@@ -426,7 +432,7 @@ public class FocusGameController {
         }
         
         // Retour au lobby après 3 secondes
-        broadcast(ChatColor.YELLOW + "Retour au spawn dans 3 secondes...");
+        broadcast(ChatColor.YELLOW + "⏱ Retour au spawn dans 3 secondes...");
         Bukkit.getLogger().info("[Focus] Planification du retour au lobby dans 3 secondes...");
         Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
             Bukkit.getLogger().info("[Focus] Exécution du retour au lobby maintenant!");
@@ -540,10 +546,11 @@ public class FocusGameController {
         // Mettre à jour les scoreboards
         scoreboardManager.updateAllScoreboards();
         
-        broadcast(ChatColor.GREEN + "╔══════════════════════════════╗");
-        broadcast(ChatColor.GOLD + "  Shop ouvert ! Achetez vos améliorations");
-        broadcast(ChatColor.YELLOW + "  Tapez /ready quand vous êtes prêt !");
-        broadcast(ChatColor.GREEN + "╚══════════════════════════════╝");
+        broadcast("");
+        broadcast(ChatColor.GOLD + "🛒 Shop ouvert !");
+        broadcast(ChatColor.GRAY + "Améliorez votre équipement");
+        broadcast(ChatColor.YELLOW + "Tapez " + ChatColor.WHITE + "/ready" + ChatColor.YELLOW + " quand vous êtes prêt");
+        broadcast("");
     }
     
     private void endGame(Player winner) {
@@ -551,22 +558,42 @@ public class FocusGameController {
         
         // Laisser le round se terminer normalement
         broadcast("");
-        broadcast(ChatColor.GOLD + "╔══════════════════════════════════════╗");
-        broadcast(ChatColor.YELLOW + "  🏆 " + winner.getName() + " remporte la partie ! 🏆");
-        broadcast(ChatColor.GOLD + "╚══════════════════════════════════════╝");
+        broadcast(ChatColor.YELLOW + "🏆 " + winner.getName() + ChatColor.YELLOW + " remporte la partie ! 🏆");
         broadcast("");
         
         // Afficher les stats
-        broadcast(ChatColor.AQUA + "📊 Statistiques finales:");
+        broadcast(ChatColor.AQUA + "📊 Classement final:");
+        broadcast("");
+        
+        FocusGameSettings.VictoryCondition condition = game.getSettings().getVictoryCondition();
         List<Player> ranking = getPlayersByPoints();
+        
         for (int i = 0; i < Math.min(3, ranking.size()); i++) {
             Player p = ranking.get(i);
             int points = pointsManager.getPoints(p);
             int kills = pointsManager.getKills(p);
             int rounds = pointsManager.getRoundsWon(p);
             String medal = i == 0 ? "🥇" : i == 1 ? "🥈" : "🥉";
-            broadcast(ChatColor.YELLOW + medal + " #" + (i + 1) + " " + p.getName() + ChatColor.GRAY + 
-                      " - Points: " + points + " | Kills: " + kills + " | Rounds: " + rounds);
+            
+            // Afficher les stats selon la condition de victoire
+            String stats = "";
+            switch (condition) {
+                case KILLS:
+                    stats = ChatColor.GRAY + String.valueOf(kills) + " kills " + ChatColor.DARK_GRAY + "• " + 
+                           ChatColor.GRAY + String.valueOf(points) + " pts";
+                    break;
+                case ROUNDS:
+                    stats = ChatColor.GRAY + String.valueOf(rounds) + " rounds " + ChatColor.DARK_GRAY + "• " + 
+                           ChatColor.GRAY + String.valueOf(points) + " pts";
+                    break;
+                case KILLS_AND_ROUNDS:
+                    stats = ChatColor.GRAY + String.valueOf(kills) + " kills " + ChatColor.DARK_GRAY + "• " +
+                           ChatColor.GRAY + String.valueOf(rounds) + " rounds " + ChatColor.DARK_GRAY + "• " +
+                           ChatColor.GRAY + String.valueOf(points) + " pts";
+                    break;
+            }
+            
+            broadcast(ChatColor.YELLOW + medal + " " + p.getName() + ChatColor.DARK_GRAY + " • " + stats);
         }
         broadcast("");
         
@@ -583,11 +610,11 @@ public class FocusGameController {
             Location spawnLoc = getSpawnMinijeux();
             for (Player p : spawnLoc.getWorld().getPlayers()) {
                 p.sendMessage("");
-                p.sendMessage(ChatColor.GOLD + "╔══════════════════════════════════════╗");
-                p.sendMessage(ChatColor.YELLOW + "  Partie terminée !");
-                p.sendMessage(ChatColor.GREEN + "  Vainqueur: " + ChatColor.GOLD + winner.getName());
-                p.sendMessage(ChatColor.GRAY + "  Retour au lobby dans 10 secondes...");
-                p.sendMessage(ChatColor.GOLD + "╚══════════════════════════════════════╝");
+                p.sendMessage(ChatColor.YELLOW + "✨ Partie terminée !");
+                p.sendMessage("");
+                p.sendMessage(ChatColor.GREEN + "Vainqueur: " + ChatColor.GOLD + winner.getName());
+                p.sendMessage("");
+                p.sendMessage(ChatColor.GRAY + "⏱ Retour au lobby dans 10s...");
                 p.sendMessage("");
             }
             
@@ -685,10 +712,6 @@ public class FocusGameController {
                 
                 // Faire exécuter la commande /lobby pour téléporter avec tous les effets (NPC, etc.)
                 player.performCommand("lobby");
-                
-                player.sendMessage("");
-                player.sendMessage(ChatColor.GREEN + "✓ Vous avez été téléporté au lobby");
-                player.sendMessage("");
             }
             
             // IMPORTANT: Retirer le joueur de la map playerToGame
@@ -801,6 +824,55 @@ public class FocusGameController {
         return getOnlinePlayers().stream()
                 .sorted((p1, p2) -> Integer.compare(pointsManager.getPoints(p2), pointsManager.getPoints(p1)))
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Distribue les points selon le classement du round
+     * Le gagnant (dernier en vie) est 1er, l'avant-dernier mort est 2ème, etc.
+     */
+    private void distributeRankingPoints(Player winner) {
+        FocusGameSettings settings = game.getSettings();
+        
+        // Créer la liste des placements (du dernier au premier)
+        // roundDeathOrder contient l'ordre de mort (index 0 = premier mort)
+        List<UUID> placementOrder = new ArrayList<>();
+        
+        // Le gagnant est 1er (dernier en vie)
+        placementOrder.add(winner.getUniqueId());
+        
+        // Ajouter les joueurs dans l'ordre inverse de mort (du dernier mort au premier mort)
+        for (int i = roundDeathOrder.size() - 1; i >= 0; i--) {
+            placementOrder.add(roundDeathOrder.get(i));
+        }
+        
+        // Distribuer les points selon le placement
+        for (int i = 0; i < placementOrder.size(); i++) {
+            UUID playerId = placementOrder.get(i);
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) continue;
+            
+            int placement = i + 1; // 1 = 1er, 2 = 2ème, etc.
+            int points = settings.getPointsForPlacement(placement);
+            
+            pointsManager.addPoints(player, points);
+            
+            // Message avec emoji selon le placement
+            String medal = "";
+            if (placement == 1) medal = "🥇";
+            else if (placement == 2) medal = "🥈";
+            else if (placement == 3) medal = "🥉";
+            
+            String message = ChatColor.GOLD + medal + " +" + points + " points (" + getOrdinal(placement) + " place)";
+            player.sendMessage(message);
+        }
+    }
+    
+    /**
+     * Retourne le suffixe ordinal (1er, 2ème, 3ème, etc.)
+     */
+    private String getOrdinal(int number) {
+        if (number == 1) return "1er";
+        return number + "ème";
     }
     
     private void broadcast(String message) {

@@ -45,6 +45,9 @@ public class FocusItemsListener implements Listener {
     private final Map<Location, Long> mineArmedTime = new HashMap<>();
     private final Set<UUID> alreadyPlacedMineThisRound = new HashSet<>();
     
+    // Tracker pour les kills de mines (victime -> poseur de mine)
+    private final Map<UUID, UUID> lastMineDamager = new HashMap<>();
+    
     // Projectiles trackés
     private final Set<Projectile> trackedProjectiles = Collections.newSetFromMap(new WeakHashMap<>());
     
@@ -60,6 +63,7 @@ public class FocusItemsListener implements Listener {
         alreadyPlacedMineThisRound.clear();
         placedMines.clear();
         mineArmedTime.clear();
+        lastMineDamager.clear();
     }
     
     // ==================== GRENADES FUMIGENES ====================
@@ -384,12 +388,21 @@ public class FocusItemsListener implements Listener {
             Location explosionLoc = mineLoc.clone().add(0.5, 0.5, 0.5);
             mineLoc.getWorld().playSound(explosionLoc, Sound.CLICK, 1.0f, 0.5f);
             
+            UUID minerUUID = entry.getValue(); // Poseur de la mine
+            
             Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
                 explosionLoc.getWorld().playSound(explosionLoc, Sound.EXPLODE, 1.5f, 1.0f);
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (!p.getWorld().equals(explosionLoc.getWorld())) continue;
                     if (p.getLocation().distanceSquared(explosionLoc) <= radiusSquared) {
+                        // Marquer le poseur de la mine comme dernier attaquant
+                        lastMineDamager.put(p.getUniqueId(), minerUUID);
                         p.damage(damage);
+                        
+                        // Retirer le tracking après 10 secondes (pour éviter fausse attribution)
+                        Bukkit.getScheduler().runTaskLater(Nerysia.getInstance(), () -> {
+                            lastMineDamager.remove(p.getUniqueId());
+                        }, 200L); // 10 secondes
                     }
                 }
                 placedMines.remove(mineLoc);
@@ -398,6 +411,15 @@ public class FocusItemsListener implements Listener {
             
             break;
         }
+    }
+    
+    /**
+     * Récupère le poseur de mine qui a tué le joueur (si applicable)
+     * @param victimUUID UUID de la victime
+     * @return UUID du poseur de mine, ou null si pas de kill par mine
+     */
+    public UUID getMineKiller(UUID victimUUID) {
+        return lastMineDamager.get(victimUUID);
     }
     
     // ==================== GRENADE PROPULSIVE ====================
